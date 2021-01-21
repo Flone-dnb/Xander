@@ -240,12 +240,17 @@ void AudioCore::prevTrack()
 
                 if (bFound == false)
                 {
-                    vAudioTracks.pop_back();
+                    // Track was removed.
+                    vPlayedHistory.pop_back();
                 }
 
-                if (vAudioTracks.size() == 0)
+                if (vPlayedHistory.size() == 0)
                 {
                     break;
+                }
+                else if (bFound == false)
+                {
+                    pFind = vPlayedHistory.back();
                 }
             }while(bFound == false);
 
