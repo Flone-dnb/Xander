@@ -14,6 +14,7 @@
 // Custom
 #include "View/MainWindow/mainwindow.h"
 #include "Model/AudioEngine/SAudioEngine/saudioengine.h"
+#include "Model/AudioEngine/SSound/ssound.h"
 
 namespace fs = std::filesystem;
 
@@ -24,6 +25,13 @@ AudioCore::AudioCore(MainWindow* pMainWindow)
 
     pAudioEngine = new SAudioEngine(pMainWindow);
     pAudioEngine->init();
+    pAudioEngine->setMasterVolume(DEFAULT_VOLUME / 100.0f);
+
+    pCurrentTrack = new SSound(pAudioEngine);
+
+    bLoadedTrackAtLeastOneTime = false;
+
+    currentTrackState = CTS_DELETED;
 }
 
 void AudioCore::addTracks(const std::vector<std::wstring> &vFiles)
@@ -105,9 +113,87 @@ void AudioCore::removeTrack(const std::wstring &sAudioTitle)
 
             vAudioTracks.erase(vAudioTracks.begin() + i);
 
+
+            currentTrackState = CTS_DELETED;
+
             break;
         }
     }
+}
+
+void AudioCore::playTrack(const std::wstring &sTrackTitle)
+{
+    std::lock_guard<std::mutex> lock(mtxProcess);
+
+    for (size_t i = 0; i < vAudioTracks.size(); i++)
+    {
+        if (vAudioTracks[i].sAudioTitle == sTrackTitle)
+        {
+            if (pCurrentTrack->loadAudioFile(vAudioTracks[i].sPathToAudioFile, true))
+            {
+                return;
+            }
+
+            pCurrentTrack->playSound();
+
+            bLoadedTrackAtLeastOneTime = true;
+            currentTrackState = CTS_PLAYING;
+
+            pMainWindow->changePlayButtonStyle(true);
+
+            break;
+        }
+    }
+}
+
+void AudioCore::playTrack()
+{
+    std::lock_guard<std::mutex> lock(mtxProcess);
+
+    if (bLoadedTrackAtLeastOneTime && currentTrackState != CTS_DELETED)
+    {
+        pCurrentTrack->playSound();
+
+        pMainWindow->changePlayButtonStyle(true);
+
+        currentTrackState = CTS_PLAYING;
+    }
+}
+
+void AudioCore::pauseTrack()
+{
+    std::lock_guard<std::mutex> lock(mtxProcess);
+
+    if (bLoadedTrackAtLeastOneTime && currentTrackState != CTS_DELETED)
+    {
+        if (currentTrackState == CTS_PLAYING)
+        {
+            pCurrentTrack->pauseSound();
+
+            currentTrackState = CTS_PAUSED;
+
+            pMainWindow->changePlayButtonStyle(false);
+        }
+    }
+}
+
+void AudioCore::stopTrack()
+{
+    std::lock_guard<std::mutex> lock(mtxProcess);
+
+    if (bLoadedTrackAtLeastOneTime && currentTrackState != CTS_DELETED)
+    {
+        pCurrentTrack->stopSound();
+
+        currentTrackState = CTS_STOPPED;
+
+        pMainWindow->changePlayButtonStyle(false);
+    }
+}
+
+void AudioCore::setVolume(int iVolume)
+{
+    pAudioEngine->setMasterVolume(iVolume / 100.0f);
 }
 
 std::wstring AudioCore::getTrackTitle(const std::wstring &sAudioPath)
@@ -136,5 +222,27 @@ std::wstring AudioCore::getTrackTitle(const std::wstring &sAudioPath)
 
 AudioCore::~AudioCore()
 {
+    if (currentTrackState != CTS_DELETED)
+    {
+        pCurrentTrack->stopSound();
+    }
+
+    delete pCurrentTrack;
+
+    for (size_t i = 0; i < vAudioTracks.size(); i++)
+    {
+        vAudioTracks[i].pOpenedStream->close();
+        delete vAudioTracks[i].pOpenedStream;
+
+        std::promise<bool> promiseRemoveWidget;
+        std::future<bool> future = promiseRemoveWidget.get_future();
+
+        pMainWindow->removeTrackWidget(vAudioTracks[i].pTrackWidget, &promiseRemoveWidget);
+
+        future.get();
+    }
+
+    vAudioTracks.clear();
+
     delete pAudioEngine;
 }

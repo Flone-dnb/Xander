@@ -457,28 +457,42 @@ QWidget[cssClass="trackWidget"]
     color: white;
 }
 
-QWidget[cssClass="trackWidget"]>QFrame
+QFrame[cssClass="trackWidget"]
 {
     background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0.3, stop:0 rgba(4, 4, 4, 255), stop:1 rgba(34, 20, 8, 255));
     border: 1px solid rgb(255, 130, 0);
     border-radius: 15px;
 }
 
-QWidget[cssClass="trackWidget"]>QFrame:hover
+QFrame[cssClass="trackWidget"]:hover
 {
     background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0.3, stop:0 rgba(24, 24, 24, 255), stop:1 rgba(54, 40, 28, 255));
     border: 1px solid rgb(255, 130, 0);
     border-radius: 15px;
 }
 
-QWidget[cssClass="trackWidget_active"]>QFrame
+QFrame[cssClass="trackWidget_selected"]
 {
-    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0.3, stop:0 rgba(24, 10, 0, 255), stop:1 rgba(40, 25, 10, 255));
+    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0.3, stop:0 rgba(40, 40, 40, 255), stop:1 rgba(55, 45, 35, 255));
     border: 1px solid rgb(255, 130, 0);
     border-radius: 15px;
 }
 
-QWidget[cssClass="trackWidget_active"]>QFrame:hover
+QFrame[cssClass="trackWidget_selected"]:hover
+{
+    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0.3, stop:0 rgba(24, 24, 24, 255), stop:1 rgba(54, 40, 28, 255));
+    border: 1px solid rgb(255, 130, 0);
+    border-radius: 15px;
+}
+
+QFrame[cssClass="trackWidget_playing"]
+{
+    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0.3, stop:0 rgba(40, 25, 15, 255), stop:1 rgba(60, 45, 30, 255));
+    border: 1px solid rgb(255, 130, 0);
+    border-radius: 15px;
+}
+
+QFrame[cssClass="trackWidget_playing"]:hover
 {
     background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0.3, stop:0 rgba(24, 10, 0, 255), stop:1 rgba(50, 35, 20, 255));
     border: 1px solid rgb(255, 130, 0);

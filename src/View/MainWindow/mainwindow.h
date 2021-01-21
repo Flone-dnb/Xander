@@ -53,11 +53,19 @@ protected:
 
     void  hideEvent               (QHideEvent  *event);
 
+    // Track Widgets.
+    void  on_trackWidget_mousePress      (TrackWidget* pPressedTrack);
+    void  on_trackWidget_mouseDoublePress(TrackWidget* pPressedTrack);
+
 private slots:
 
-    void  slotTrayIconActivated   ();
+    void  slotTrayIconActivated          ();
 
-    // UI slots.
+    // Main UI button.
+    void  on_pushButton_play_clicked     ();
+    void  on_pushButton_stop_clicked     ();
+
+    // Volume slider.
     void  on_horizontalSlider_volume_valueChanged (int value);
 
     // QMenuBar.
@@ -68,6 +76,7 @@ private slots:
 private:
 
     friend class TrackList;
+    friend class TrackWidget;
 
     void applyStyle               ();
 
@@ -79,7 +88,11 @@ private:
     Controller*      pController;
 
 
-    std::mutex       mtxButtonStateChange;
+    std::mutex       mtxUIStateChange;
+
+
+    TrackWidget*     pSelectedTrack;
+    TrackWidget*     pPlayingTrack;
 
 
     bool             bPlayButtonStatePlay;

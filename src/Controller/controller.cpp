@@ -25,6 +25,31 @@ void Controller::addTracks(const std::wstring &sFolderPath)
     pAudioCore->addTracks(sFolderPath);
 }
 
+void Controller::playTrack(const std::wstring &sTrackTitle)
+{
+    pAudioCore->playTrack(sTrackTitle);
+}
+
+void Controller::playTrack()
+{
+    pAudioCore->playTrack();
+}
+
+void Controller::pauseTrack()
+{
+    pAudioCore->pauseTrack();
+}
+
+void Controller::stopTrack()
+{
+    pAudioCore->stopTrack();
+}
+
+void Controller::setVolume(int iVolume)
+{
+    pAudioCore->setVolume(iVolume);
+}
+
 Controller::~Controller()
 {
     delete pAudioCore;

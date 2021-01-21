@@ -19,6 +19,15 @@
 
 class MainWindow;
 class SAudioEngine;
+class SSound;
+
+enum CURRENT_TRACK_STATE
+{
+    CTS_STOPPED = 0,
+    CTS_DELETED = 1,
+    CTS_PLAYING = 2,
+    CTS_PAUSED = 3
+};
 
 class AudioCore
 {
@@ -28,8 +37,14 @@ public:
 
     void addTracks   (const std::vector<std::wstring>& vFiles);
     void addTracks   (const std::wstring& sFolderPath);
-
     void removeTrack (const std::wstring& sAudioTitle);
+
+    void playTrack   (const std::wstring& sTrackTitle);
+    void playTrack   ();
+    void pauseTrack  ();
+    void stopTrack   ();
+
+    void setVolume   (int iVolume);
 
 private:
 
@@ -38,8 +53,13 @@ private:
 
     MainWindow*   pMainWindow;
     SAudioEngine* pAudioEngine;
+    SSound*       pCurrentTrack;
+
 
     std::vector<XAudioFile> vAudioTracks;
 
     std::mutex    mtxProcess;
+
+    bool          bLoadedTrackAtLeastOneTime;
+    CURRENT_TRACK_STATE currentTrackState;
 };

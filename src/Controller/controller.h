@@ -24,6 +24,13 @@ public:
     void addTracks(const std::vector<std::wstring>& vFiles);
     void addTracks(const std::wstring& sFolderPath);
 
+    void playTrack(const std::wstring& sTrackTitle);
+    void playTrack();
+    void pauseTrack();
+    void stopTrack();
+
+    void setVolume(int iVolume);
+
 private:
 
     AudioCore* pAudioCore;

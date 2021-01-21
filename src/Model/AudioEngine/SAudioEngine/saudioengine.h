@@ -253,8 +253,8 @@ private:
     MainWindow* pMainWindow;
 
 
-    Microsoft::WRL::ComPtr<IXAudio2> pXAudio2Engine;
-    IXAudio2MasteringVoice*          pMasteringVoice;
+    IXAudio2*               pXAudio2Engine;
+    IXAudio2MasteringVoice* pMasteringVoice;
 
 
     std::mutex mtxSoundMix;

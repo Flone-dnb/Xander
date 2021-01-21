@@ -110,6 +110,8 @@ SAudioEngine::~SAudioEngine()
     pXAudio2Engine->StopEngine();
 
 
+    pXAudio2Engine->Release();
+
     MFShutdown();
 }
 

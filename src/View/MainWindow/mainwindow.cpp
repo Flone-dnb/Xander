@@ -31,6 +31,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->scrollArea_tracklist->init(this);
 
+    pSelectedTrack = nullptr;
+    pPlayingTrack  = nullptr;
+
     bPlayButtonStatePlay = true;
     bRepeatButtonStateActive = false;
     bRandomButtonStateActive = false;
@@ -83,7 +86,7 @@ void MainWindow::onExecCalled()
 
 void MainWindow::addTrackWidget(const std::wstring &sTrackTitle, std::promise<TrackWidget*> *pPromiseCreateWidget)
 {
-    std::lock_guard<std::mutex> lock(mtxButtonStateChange);
+    std::lock_guard<std::mutex> lock(mtxUIStateChange);
 
     TrackWidget* pTrackWidget = new TrackWidget(QString::fromStdWString(sTrackTitle), this);
 
@@ -95,7 +98,17 @@ void MainWindow::addTrackWidget(const std::wstring &sTrackTitle, std::promise<Tr
 
 void MainWindow::removeTrackWidget(TrackWidget *pTrackWidget, std::promise<bool> *pPromiseRemoveWidget)
 {
-    std::lock_guard<std::mutex> lock(mtxButtonStateChange);
+    std::lock_guard<std::mutex> lock(mtxUIStateChange);
+
+    if (pTrackWidget == pSelectedTrack)
+    {
+        pSelectedTrack = nullptr;
+    }
+
+    if (pTrackWidget == pPlayingTrack)
+    {
+        pPlayingTrack = nullptr;
+    }
 
     delete pTrackWidget;
 
@@ -151,7 +164,7 @@ void MainWindow::applyStyle()
 
 void MainWindow::changePlayButtonStyle(bool bChangeStyleToPause)
 {
-    std::lock_guard<std::mutex> lock(mtxButtonStateChange);
+    std::lock_guard<std::mutex> lock(mtxUIStateChange);
 
     if (bChangeStyleToPause)
     {
@@ -171,7 +184,7 @@ void MainWindow::changePlayButtonStyle(bool bChangeStyleToPause)
 
 void MainWindow::changeRepeatButtonStyle(bool bActive)
 {
-    std::lock_guard<std::mutex> lock(mtxButtonStateChange);
+    std::lock_guard<std::mutex> lock(mtxUIStateChange);
 
     if (bActive)
     {
@@ -191,7 +204,7 @@ void MainWindow::changeRepeatButtonStyle(bool bActive)
 
 void MainWindow::changeRandomButtonStyle(bool bActive)
 {
-    std::lock_guard<std::mutex> lock(mtxButtonStateChange);
+    std::lock_guard<std::mutex> lock(mtxUIStateChange);
 
     if (bActive)
     {
@@ -212,6 +225,8 @@ void MainWindow::changeRandomButtonStyle(bool bActive)
 void MainWindow::on_horizontalSlider_volume_valueChanged(int value)
 {
     ui->label_volume->setText("Volume: " + QString::number(value) + "%");
+
+    pController->setVolume(value);
 }
 
 void MainWindow::on_actionAbout_triggered()
@@ -250,6 +265,97 @@ void MainWindow::on_actionOpen_Folder_triggered()
     {
         pController->addTracks(dir.toStdWString());
     }
+}
+
+void MainWindow::on_trackWidget_mousePress(TrackWidget *pPressedTrack)
+{
+    std::lock_guard<std::mutex> lock(mtxUIStateChange);
+
+    if (pSelectedTrack == nullptr)
+    {
+        // Nothing is selected.
+
+        pSelectedTrack = pPressedTrack;
+
+        pPressedTrack->setSelected();
+    }
+    else if (pSelectedTrack != pPressedTrack)
+    {
+        // Something is already selected.
+
+        if (pSelectedTrack == pPlayingTrack)
+        {
+            pSelectedTrack->setPlaying();
+        }
+        else
+        {
+            pSelectedTrack->setIdle();
+        }
+
+        pSelectedTrack = pPressedTrack;
+
+        pPressedTrack->setSelected();
+    }
+    else if (pSelectedTrack == pPressedTrack)
+    {
+        pSelectedTrack->setIdle();
+
+        pSelectedTrack = nullptr;
+    }
+}
+
+void MainWindow::on_trackWidget_mouseDoublePress(TrackWidget *pPressedTrack)
+{
+    mtxUIStateChange.lock();
+
+    if (pPressedTrack == pSelectedTrack)
+    {
+        pSelectedTrack = nullptr;
+    }
+
+    if (pPlayingTrack == nullptr)
+    {
+        pPlayingTrack = pPressedTrack;
+
+        pPressedTrack->setPlaying();
+    }
+    else if (pPlayingTrack != pPressedTrack)
+    {
+        pPlayingTrack->setIdle();
+
+        pPlayingTrack = pPressedTrack;
+
+        pPressedTrack->setPlaying();
+    }
+
+    mtxUIStateChange.unlock();
+
+    pController->playTrack(pPressedTrack->getTrackTitle().toStdWString());
+}
+
+void MainWindow::on_pushButton_play_clicked()
+{
+    mtxUIStateChange.lock();
+
+    if (bPlayButtonStatePlay)
+    {
+        // Nothing is playing.
+
+        // Maybe track was stopped before.
+        mtxUIStateChange.unlock();
+        pController->playTrack();
+    }
+    else
+    {
+        // Trying to pause.
+        mtxUIStateChange.unlock();
+        pController->pauseTrack();
+    }
+}
+
+void MainWindow::on_pushButton_stop_clicked()
+{
+    pController->stopTrack();
 }
 
 MainWindow::~MainWindow()
