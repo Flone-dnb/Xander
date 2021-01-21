@@ -17,16 +17,31 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    ../src/Controller/controller.cpp \
+    ../src/Model/AudioCore/audiocore.cpp \
+    ../src/Model/AudioEngine/SAudioEngine/saudioengine.cpp \
+    ../src/Model/AudioEngine/SSound/ssound.cpp \
+    ../src/Model/AudioEngine/SSoundMix/ssoundmix.cpp \
+    ../src/View/AboutWindow/aboutwindow.cpp \
     ../src/main.cpp \
     ../src/View/MainWindow/mainwindow.cpp
 
 HEADERS += \
+    ../src/Controller/controller.h \
+    ../src/Model/AudioCore/audiocore.h \
+    ../src/Model/AudioEngine/SAudioEngine/saudioengine.h \
+    ../src/Model/AudioEngine/SSound/ssound.h \
+    ../src/Model/AudioEngine/SSoundMix/ssoundmix.h \
+    ../src/Model/globals.h \
+    ../src/View/AboutWindow/aboutwindow.h \
     ../src/View/MainWindow/mainwindow.h
 
 FORMS += \
+    ../src/View/AboutWindow/aboutwindow.ui \
     ../src/View/MainWindow/mainwindow.ui
 
 INCLUDEPATH += "../src"
+INCLUDEPATH += "../src/Model"
 
 win32
 {

@@ -1,0 +1,447 @@
+QMainWindow
+{
+    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(7, 7, 7, 255), stop:1 rgba(25, 25, 25, 255));
+    color: white;
+}
+
+QScrollArea
+{
+    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(7, 7, 7, 255), stop:1 rgba(25, 25, 25, 255));
+    border: 1px solid rgb(255, 130, 0);
+    border-radius: 25px;
+    color: white;
+}
+
+QWidget[cssClass="tracklist_widget"]
+{
+    border: none;
+}
+
+QLabel
+{
+    background-color: transparent;
+    color: white;
+}
+
+QMessageBox
+{
+    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(7, 7, 7, 255), stop:1 rgba(25, 25, 25, 255));
+    color: white;
+}
+
+QMessageBox > QLabel
+{
+    background-color: transparent;
+    color: white;
+}
+
+QMessageBox QPushButton
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(7, 7, 7, 255), stop:1 rgba(28, 28, 28, 255));
+	border: 1px solid rgb(240, 0, 0);
+	border-radius: 6px;
+    color: white;
+    min-width: 60px;
+    min-height: 20px;
+}
+
+QMessageBox QPushButton:disabled
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(4, 4, 4, 200), stop:1 rgba(29, 29, 29, 230));
+	border: 1px solid darkred;
+	color: rgb(50, 50, 50);
+}
+
+QMessageBox QPushButton:hover
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(37, 37, 37, 255), stop:1 rgba(58, 58, 58, 255));
+	border: 1px solid white;
+}
+
+QMenuBar
+{
+	background-color: transparent;
+	color: white;
+}
+
+QMenuBar::item
+{
+	background-color: transparent;
+}
+
+QMenuBar::item::selected
+{
+	background: rgb(255, 130, 0);
+}
+
+QMenu
+{
+	background: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(26, 26, 26, 100), stop:0.605809 rgba(19, 19, 19, 255), stop:1 rgba(26, 26, 26, 100));
+	color: white;
+}
+
+QMenu::item::selected
+{
+	background: rgb(255, 130, 0);
+}
+
+QMenu::separator
+{
+	background-color: rgb(50, 0, 0);
+	height: 2px;
+    margin-left: 10px; 
+    margin-right: 5px;
+}
+
+QSlider::handle
+{
+	background-color: black;
+	border: 1px solid rgb(255, 130, 0);
+}
+
+QSlider::add-page 
+{
+    background: gray;
+}
+
+QSlider::sub-page
+ {
+    background: rgb(255, 130, 0);
+}
+
+QSlider::handle:disabled
+{
+	background-color: rgb(59, 59, 59);
+	border: 1px solid gray;
+}
+
+QSlider::add-page:disabled 
+{
+    background: gray;
+}
+
+QSlider::sub-page:disabled
+{
+    background: gray;
+}
+
+QPushButton[cssClass="play"]
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_play.png");
+}
+
+QPushButton[cssClass="play"]:hover
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_play_hover.png");
+}
+
+QPushButton[cssClass="play"]:pressed
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_play.png");
+}
+
+QPushButton[cssClass="stop"]
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_stop.png");
+}
+
+QPushButton[cssClass="stop"]:hover
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_stop_hover.png");
+}
+
+QPushButton[cssClass="stop"]:pressed
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_stop.png");
+}
+
+QPushButton[cssClass="prev"]
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_prev.png");
+}
+
+QPushButton[cssClass="prev"]:hover
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_prev_hover.png");
+}
+
+QPushButton[cssClass="prev"]:pressed
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_prev.png");
+}
+
+QPushButton[cssClass="next"]
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_next.png");
+}
+
+QPushButton[cssClass="next"]:hover
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_next_hover.png");
+}
+
+QPushButton[cssClass="next"]:pressed
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_next.png");
+}
+
+QPushButton[cssClass="pause"]
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_pause.png");
+}
+
+QPushButton[cssClass="pause"]:hover
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_pause_hover.png");
+}
+
+QPushButton[cssClass="pause"]:pressed
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_pause.png");
+}
+
+QPushButton[cssClass="repeat"]
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_repeat.png");
+}
+
+QPushButton[cssClass="repeat"]:hover
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_repeat_hover.png");
+}
+
+QPushButton[cssClass="repeat"]:pressed
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_repeat.png");
+}
+
+QPushButton[cssClass="random"]
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_random.png");
+}
+
+QPushButton[cssClass="random"]:hover
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_random_hover.png");
+}
+
+QPushButton[cssClass="random"]:pressed
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_random.png");
+}
+
+QPushButton[cssClass="fx"]
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_fx.png");
+}
+
+QPushButton[cssClass="fx"]:hover
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_fx_hover.png");
+}
+
+QPushButton[cssClass="fx"]:pressed
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_fx.png");
+}
+
+QPushButton[cssClass="clear"]
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_clear.png");
+}
+
+QPushButton[cssClass="clear"]:hover
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_clear_hover.png");
+}
+
+QPushButton[cssClass="clear"]:pressed
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_clear.png");
+}
+
+QPushButton[cssClass="repeat_active"]
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_repeat_active.png");
+}
+
+QPushButton[cssClass="repeat_active"]:hover
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_repeat_hover.png");
+}
+
+QPushButton[cssClass="repeat_active"]:pressed
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_repeat_active.png");
+}
+
+QPushButton[cssClass="random_active"]
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_random_active.png");
+}
+
+QPushButton[cssClass="random_active"]:hover
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_random_hover.png");
+}
+
+QPushButton[cssClass="random_active"]:pressed
+{
+    border: none;
+    width: 40%;
+    height: 40%;
+    background-color: transparent;
+    border-image: url(":/button_random_active.png");
+}
+
+QPushButton[cssClass="github"]
+{
+    border: none;
+    width: 50%;
+    height: 50%;
+    background-color: transparent;
+    border-image: url(":/GitHub-Mark-Light.png");
+}
+
+QPushButton[cssClass="github"]:hover
+{
+    border-image: url(":/GitHub-Mark-Light-Hover.png");
+}
+
+QPushButton[cssClass="github"]:pressed
+{
+    border-image: url(":/GitHub-Mark-Light.png");
+}
+
+QLabel[cssClass="appIcon"]
+{
+	background-color: transparent;
+}

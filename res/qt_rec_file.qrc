@@ -1,5 +1,27 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
 	<file>logo.png</file>
+	<file>GitHub-Mark-Light.png</file>
+	<file>GitHub-Mark-Light-Hover.png</file>
+	<file>button_prev.png</file>
+	<file>button_next.png</file>
+	<file>button_play.png</file>
+	<file>button_pause.png</file>
+	<file>button_stop.png</file>
+	<file>button_repeat.png</file>
+	<file>button_random.png</file>
+	<file>button_clear.png</file>
+	<file>button_fx.png</file>
+	<file>button_prev_hover.png</file>
+	<file>button_next_hover.png</file>
+	<file>button_play_hover.png</file>
+	<file>button_pause_hover.png</file>
+	<file>button_stop_hover.png</file>
+	<file>button_repeat_hover.png</file>
+	<file>button_random_hover.png</file>
+	<file>button_clear_hover.png</file>
+	<file>button_fx_hover.png</file>
+	<file>button_repeat_active.png</file>
+	<file>button_random_active.png</file>
 </qresource>
 </RCC>
