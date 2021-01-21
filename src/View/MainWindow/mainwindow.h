@@ -12,6 +12,7 @@
 
 // STL
 #include <mutex>
+#include <future>
 
 
 QT_BEGIN_NAMESPACE
@@ -21,6 +22,7 @@ QT_END_NAMESPACE
 class QSystemTrayIcon;
 class QHideEvent;
 class Controller;
+class TrackWidget;
 
 class MainWindow : public QMainWindow
 {
@@ -35,6 +37,10 @@ public:
     void onExecCalled             ();
 
 
+    void addTrackWidget           (const std::wstring& sTrackTitle, std::promise<TrackWidget*>* pPromiseCreateWidget);
+    void removeTrackWidget        (TrackWidget* pTrackWidget, std::promise<bool>* pPromiseRemoveWidget);
+
+
     void changePlayButtonStyle    (bool bChangeStyleToPause);
     void changeRepeatButtonStyle  (bool bActive);
     void changeRandomButtonStyle  (bool bActive);
@@ -42,18 +48,26 @@ public:
 
     void showMessageBox           (std::wstring sMessageTitle, std::wstring sMessageText, bool bErrorMessage);
 
-private slots:
+
+protected:
 
     void  hideEvent               (QHideEvent  *event);
+
+private slots:
+
     void  slotTrayIconActivated   ();
 
     // UI slots.
     void  on_horizontalSlider_volume_valueChanged (int value);
 
     // QMenuBar.
-    void  on_actionAbout_triggered();
+    void  on_actionAbout_triggered       ();
+    void  on_actionOpen_File_triggered   ();
+    void  on_actionOpen_Folder_triggered ();
 
 private:
+
+    friend class TrackList;
 
     void applyStyle               ();
 

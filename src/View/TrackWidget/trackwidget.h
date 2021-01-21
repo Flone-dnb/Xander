@@ -7,32 +7,23 @@
 
 #pragma once
 
-// Qt
-#include <QMainWindow>
+#include <QWidget>
 
 namespace Ui {
-class AboutWindow;
+class TrackWidget;
 }
 
-class QCloseEvent;
-
-class AboutWindow : public QMainWindow
+class TrackWidget : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit AboutWindow(QWidget *parent = nullptr);
-    ~AboutWindow() override;
+    explicit TrackWidget(QString sTrackTitle, QWidget *parent = nullptr);
+    ~TrackWidget() override;
 
 protected:
-
     void closeEvent(QCloseEvent* event) override;
 
-private slots:
-
-    void on_pushButton_github_clicked();
-
 private:
-
-    Ui::AboutWindow *ui;
+    Ui::TrackWidget *ui;
 };

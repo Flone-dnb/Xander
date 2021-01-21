@@ -13,11 +13,14 @@
 #include <QMessageBox>
 #include <QFile>
 #include <QStyle>
+#include <QScrollBar>
+#include <QFileDialog>
 
 // Custom
 #include "Controller/controller.h"
 #include "Model/globals.h"
 #include "View/AboutWindow/aboutwindow.h"
+#include "View/TrackWidget/trackwidget.h"
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -25,6 +28,8 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    ui->scrollArea_tracklist->init(this);
 
     bPlayButtonStatePlay = true;
     bRepeatButtonStateActive = false;
@@ -56,6 +61,9 @@ void MainWindow::onExecCalled()
     ui->pushButton_clear->setProperty("cssClass", "clear");
     ui->scrollAreaWidgetContents->setProperty("cssClass", "tracklist_widget");
 
+    ui->scrollAreaWidgetContents->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    ui->verticalLayout_tracks->layout()->setSizeConstraint(QLayout::SetFixedSize);
+
     applyStyle();
 
 
@@ -71,6 +79,27 @@ void MainWindow::onExecCalled()
     // Create Controller.
 
     pController = new Controller(this);
+}
+
+void MainWindow::addTrackWidget(const std::wstring &sTrackTitle, std::promise<TrackWidget*> *pPromiseCreateWidget)
+{
+    std::lock_guard<std::mutex> lock(mtxButtonStateChange);
+
+    TrackWidget* pTrackWidget = new TrackWidget(QString::fromStdWString(sTrackTitle), this);
+
+    ui->verticalLayout_tracks->addWidget(pTrackWidget);
+    ui->scrollArea_tracklist->verticalScrollBar()->setSliderPosition(ui->scrollArea_tracklist->verticalScrollBar()->maximum());
+
+    pPromiseCreateWidget->set_value(pTrackWidget);
+}
+
+void MainWindow::removeTrackWidget(TrackWidget *pTrackWidget, std::promise<bool> *pPromiseRemoveWidget)
+{
+    std::lock_guard<std::mutex> lock(mtxButtonStateChange);
+
+    delete pTrackWidget;
+
+    pPromiseRemoveWidget->set_value(false);
 }
 
 void MainWindow::showMessageBox(std::wstring sMessageTitle, std::wstring sMessageText, bool bErrorMessage)
@@ -191,6 +220,36 @@ void MainWindow::on_actionAbout_triggered()
     pAboutWindow->setWindowModality(Qt::WindowModality::WindowModal);
 
     pAboutWindow->show();
+}
+
+void MainWindow::on_actionOpen_File_triggered()
+{
+    QStringList files = QFileDialog::getOpenFileNames(this, "Open File(s)", "", "Audio Files (*"
+                                                      + QString::fromStdString(EXTENSION_MP3)
+                                                      + " *" + QString::fromStdString(EXTENSION_WAV) +
+                                                      "*" + QString::fromStdString(EXTENSION_OGG) + ")");
+
+    if (files.size() > 0)
+    {
+        std::vector<std::wstring> vLocalPaths;
+
+        for (int i = 0; i < files.size(); i++)
+        {
+            vLocalPaths.push_back(files[i].toStdWString());
+        }
+
+        pController->addTracks(vLocalPaths);
+    }
+}
+
+void MainWindow::on_actionOpen_Folder_triggered()
+{
+    QString dir = QFileDialog::getExistingDirectory(nullptr, "Open Folder", "");
+
+    if (dir != "")
+    {
+        pController->addTracks(dir.toStdWString());
+    }
 }
 
 MainWindow::~MainWindow()

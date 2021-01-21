@@ -7,6 +7,10 @@
 
 #pragma once
 
+// STL
+#include <string>
+#include <vector>
+
 class MainWindow;
 class AudioCore;
 
@@ -15,6 +19,10 @@ class Controller
 public:
     Controller(MainWindow* pMainWindow);
     ~Controller();
+
+
+    void addTracks(const std::vector<std::wstring>& vFiles);
+    void addTracks(const std::wstring& sFolderPath);
 
 private:
 

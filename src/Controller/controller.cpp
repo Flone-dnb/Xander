@@ -15,6 +15,16 @@ Controller::Controller(MainWindow* pMainWindow)
     pAudioCore = new AudioCore(pMainWindow);
 }
 
+void Controller::addTracks(const std::vector<std::wstring> &vFiles)
+{
+    pAudioCore->addTracks(vFiles);
+}
+
+void Controller::addTracks(const std::wstring &sFolderPath)
+{
+    pAudioCore->addTracks(sFolderPath);
+}
+
 Controller::~Controller()
 {
     delete pAudioCore;

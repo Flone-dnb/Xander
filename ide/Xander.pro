@@ -17,16 +17,20 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    ../ext/qcustomplot/qcustomplot.cpp \
     ../src/Controller/controller.cpp \
     ../src/Model/AudioCore/audiocore.cpp \
     ../src/Model/AudioEngine/SAudioEngine/saudioengine.cpp \
     ../src/Model/AudioEngine/SSound/ssound.cpp \
     ../src/Model/AudioEngine/SSoundMix/ssoundmix.cpp \
     ../src/View/AboutWindow/aboutwindow.cpp \
+    ../src/View/TrackList/tracklist.cpp \
+    ../src/View/TrackWidget/trackwidget.cpp \
     ../src/main.cpp \
     ../src/View/MainWindow/mainwindow.cpp
 
 HEADERS += \
+    ../ext/qcustomplot/qcustomplot.h \
     ../src/Controller/controller.h \
     ../src/Model/AudioCore/audiocore.h \
     ../src/Model/AudioEngine/SAudioEngine/saudioengine.h \
@@ -34,11 +38,15 @@ HEADERS += \
     ../src/Model/AudioEngine/SSoundMix/ssoundmix.h \
     ../src/Model/globals.h \
     ../src/View/AboutWindow/aboutwindow.h \
-    ../src/View/MainWindow/mainwindow.h
+    ../src/View/MainWindow/mainwindow.h \
+    ../src/View/TrackList/tracklist.h \
+    ../src/View/TrackWidget/trackwidget.h
 
 FORMS += \
     ../src/View/AboutWindow/aboutwindow.ui \
-    ../src/View/MainWindow/mainwindow.ui
+    ../src/View/MainWindow/mainwindow.ui \
+    ../src/View/TrackList/tracklist.ui \
+    ../src/View/TrackWidget/trackwidget.ui
 
 INCLUDEPATH += "../src"
 INCLUDEPATH += "../src/Model"
@@ -50,6 +58,8 @@ win32
 }
 
 RESOURCES += ../res/qt_rec_file.qrc
+
+QMAKE_CXXFLAGS *= /std:c++17
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
