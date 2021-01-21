@@ -328,7 +328,14 @@ void MainWindow::on_trackWidget_mousePress(TrackWidget *pPressedTrack)
     }
     else if (pSelectedTrack == pPressedTrack)
     {
-        pSelectedTrack->setIdle();
+        if (pPlayingTrack == pSelectedTrack)
+        {
+            pSelectedTrack->setPlaying();
+        }
+        else
+        {
+            pSelectedTrack->setIdle();
+        }
 
         pSelectedTrack = nullptr;
     }
