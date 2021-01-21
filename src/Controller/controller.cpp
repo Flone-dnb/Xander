@@ -45,6 +45,16 @@ void Controller::stopTrack()
     pAudioCore->stopTrack();
 }
 
+void Controller::prevTrack()
+{
+    pAudioCore->prevTrack();
+}
+
+void Controller::clearTracklist()
+{
+    pAudioCore->clearTracklist();
+}
+
 void Controller::setVolume(int iVolume)
 {
     pAudioCore->setVolume(iVolume);

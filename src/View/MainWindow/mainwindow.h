@@ -45,6 +45,8 @@ public:
     void changeRepeatButtonStyle  (bool bActive);
     void changeRandomButtonStyle  (bool bActive);
 
+    void setNewPlayingTrack       (TrackWidget* pTrackWidget);
+
 
     void showMessageBox           (std::wstring sMessageTitle, std::wstring sMessageText, bool bErrorMessage);
 
@@ -54,24 +56,25 @@ protected:
     void  hideEvent               (QHideEvent  *event);
 
     // Track Widgets.
-    void  on_trackWidget_mousePress      (TrackWidget* pPressedTrack);
-    void  on_trackWidget_mouseDoublePress(TrackWidget* pPressedTrack);
+    void  on_trackWidget_mousePress       (TrackWidget* pPressedTrack);
+    void  on_trackWidget_mouseDoublePress (TrackWidget* pPressedTrack);
 
 private slots:
 
-    void  slotTrayIconActivated          ();
+    void  slotTrayIconActivated           ();
 
     // Main UI button.
-    void  on_pushButton_play_clicked     ();
-    void  on_pushButton_stop_clicked     ();
+    void  on_pushButton_play_clicked      ();
+    void  on_pushButton_stop_clicked      ();
+    void  on_pushButton_prev_track_clicked();
 
     // Volume slider.
     void  on_horizontalSlider_volume_valueChanged (int value);
 
     // QMenuBar.
-    void  on_actionAbout_triggered       ();
-    void  on_actionOpen_File_triggered   ();
-    void  on_actionOpen_Folder_triggered ();
+    void  on_actionAbout_triggered        ();
+    void  on_actionOpen_File_triggered    ();
+    void  on_actionOpen_Folder_triggered  ();
 
 private:
 

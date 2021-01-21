@@ -222,6 +222,36 @@ void MainWindow::changeRandomButtonStyle(bool bActive)
     bRandomButtonStateActive = bActive;
 }
 
+void MainWindow::setNewPlayingTrack(TrackWidget *pTrackWidget)
+{
+    std::lock_guard<std::mutex> lock(mtxUIStateChange);
+
+    if (pTrackWidget == pSelectedTrack)
+    {
+        pSelectedTrack->setPlaying();
+        pSelectedTrack = nullptr;
+
+        pPlayingTrack = pTrackWidget;
+    }
+
+    if (pPlayingTrack == nullptr)
+    {
+        pPlayingTrack = pTrackWidget;
+
+        pTrackWidget->setPlaying();
+    }
+    else if (pPlayingTrack != pTrackWidget)
+    {
+        pPlayingTrack->setIdle();
+
+        pPlayingTrack = pTrackWidget;
+
+        pTrackWidget->setPlaying();
+    }
+
+    ui->scrollArea_tracklist->ensureWidgetVisible(pTrackWidget);
+}
+
 void MainWindow::on_horizontalSlider_volume_valueChanged(int value)
 {
     ui->label_volume->setText("Volume: " + QString::number(value) + "%");
@@ -356,6 +386,11 @@ void MainWindow::on_pushButton_play_clicked()
 void MainWindow::on_pushButton_stop_clicked()
 {
     pController->stopTrack();
+}
+
+void MainWindow::on_pushButton_prev_track_clicked()
+{
+    pController->prevTrack();
 }
 
 MainWindow::~MainWindow()

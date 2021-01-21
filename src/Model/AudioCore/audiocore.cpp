@@ -40,15 +40,15 @@ void AudioCore::addTracks(const std::vector<std::wstring> &vFiles)
 
     for (size_t i = 0; i < vFiles.size(); i++)
     {
-        vAudioTracks.push_back(XAudioFile());
+        vAudioTracks.push_back(new XAudioFile());
 
-        vAudioTracks.back().pOpenedStream = new std::ifstream();
-        vAudioTracks.back().pOpenedStream->open(vFiles[i], std::ios::binary);
+        vAudioTracks.back()->pOpenedStream = new std::ifstream();
+        vAudioTracks.back()->pOpenedStream->open(vFiles[i], std::ios::binary);
 
-        if (vAudioTracks.back().pOpenedStream->is_open())
+        if (vAudioTracks.back()->pOpenedStream->is_open())
         {
-            vAudioTracks.back().sPathToAudioFile = vFiles[i];
-            vAudioTracks.back().sAudioTitle = getTrackTitle(vFiles[i]);
+            vAudioTracks.back()->sPathToAudioFile = vFiles[i];
+            vAudioTracks.back()->sAudioTitle = getTrackTitle(vFiles[i]);
 
 
 
@@ -57,13 +57,14 @@ void AudioCore::addTracks(const std::vector<std::wstring> &vFiles)
             std::promise<class TrackWidget*> promiseCreateWidget;
             std::future<class TrackWidget*> future = promiseCreateWidget.get_future();
 
-            pMainWindow->addTrackWidget(vAudioTracks.back().sAudioTitle, &promiseCreateWidget);
+            pMainWindow->addTrackWidget(vAudioTracks.back()->sAudioTitle, &promiseCreateWidget);
 
-            vAudioTracks.back().pTrackWidget = future.get();
+            vAudioTracks.back()->pTrackWidget = future.get();
         }
         else
         {
-            delete vAudioTracks.back().pOpenedStream;
+            delete vAudioTracks.back()->pOpenedStream;
+            delete vAudioTracks[i];
             vAudioTracks.pop_back();
 
             pMainWindow->showMessageBox(L"Error", L"An error occurred at AudioCore::addTracks(): could not open the file \""
@@ -98,17 +99,19 @@ void AudioCore::removeTrack(const std::wstring &sAudioTitle)
 
     for (size_t i = 0; i < vAudioTracks.size(); i++)
     {
-        if (vAudioTracks[i].sAudioTitle == sAudioTitle)
+        if (vAudioTracks[i]->sAudioTitle == sAudioTitle)
         {
-            vAudioTracks[i].pOpenedStream->close();
-            delete vAudioTracks[i].pOpenedStream;
+            vAudioTracks[i]->pOpenedStream->close();
+            delete vAudioTracks[i]->pOpenedStream;
 
             std::promise<bool> promiseRemoveWidget;
             std::future<bool> future = promiseRemoveWidget.get_future();
 
-            pMainWindow->removeTrackWidget(vAudioTracks[i].pTrackWidget, &promiseRemoveWidget);
+            pMainWindow->removeTrackWidget(vAudioTracks[i]->pTrackWidget, &promiseRemoveWidget);
 
             future.get();
+
+            delete vAudioTracks[i];
 
 
             vAudioTracks.erase(vAudioTracks.begin() + i);
@@ -127,9 +130,9 @@ void AudioCore::playTrack(const std::wstring &sTrackTitle)
 
     for (size_t i = 0; i < vAudioTracks.size(); i++)
     {
-        if (vAudioTracks[i].sAudioTitle == sTrackTitle)
+        if (vAudioTracks[i]->sAudioTitle == sTrackTitle)
         {
-            if (pCurrentTrack->loadAudioFile(vAudioTracks[i].sPathToAudioFile, true))
+            if (pCurrentTrack->loadAudioFile(vAudioTracks[i]->sPathToAudioFile, true))
             {
                 return;
             }
@@ -140,6 +143,27 @@ void AudioCore::playTrack(const std::wstring &sTrackTitle)
             currentTrackState = CTS_PLAYING;
 
             pMainWindow->changePlayButtonStyle(true);
+
+
+
+            // Add to history.
+
+            if (vPlayedHistory.size() > 0)
+            {
+                if (vPlayedHistory.back() != vAudioTracks[i])
+                {
+                    if (vPlayedHistory.size() == MAX_HISTORY_SIZE)
+                    {
+                        vPlayedHistory.erase(vPlayedHistory.begin());
+                    }
+
+                    vPlayedHistory.push_back(vAudioTracks[i]);
+                }
+            }
+            else
+            {
+                vPlayedHistory.push_back(vAudioTracks[i]);
+            }
 
             break;
         }
@@ -191,6 +215,87 @@ void AudioCore::stopTrack()
     }
 }
 
+void AudioCore::prevTrack()
+{
+    mtxProcess.lock();
+
+    if (bLoadedTrackAtLeastOneTime && currentTrackState != CTS_DELETED)
+    {
+        if (vPlayedHistory.size() > 1)
+        {
+            XAudioFile* pFind = vPlayedHistory[vPlayedHistory.size() - 2];
+
+            bool bFound = false;
+
+            do
+            {
+                for (size_t i = 0; i < vAudioTracks.size(); i++)
+                {
+                    if (vAudioTracks[i] == pFind)
+                    {
+                        bFound = true;
+                        break;
+                    }
+                }
+
+                if (bFound == false)
+                {
+                    vAudioTracks.pop_back();
+                }
+
+                if (vAudioTracks.size() == 0)
+                {
+                    break;
+                }
+            }while(bFound == false);
+
+            if (bFound)
+            {
+                vPlayedHistory.pop_back(); // pop current
+                vPlayedHistory.pop_back();
+
+                mtxProcess.unlock();
+                playTrack(pFind->sAudioTitle);
+
+                pMainWindow->setNewPlayingTrack(pFind->pTrackWidget);
+            }
+            else
+            {
+                mtxProcess.unlock();
+            }
+        }
+        else
+        {
+            mtxProcess.unlock();
+        }
+    }
+    else
+    {
+        mtxProcess.unlock();
+    }
+}
+
+void AudioCore::clearTracklist()
+{
+    std::lock_guard<std::mutex> lock(mtxProcess);
+
+    if (bLoadedTrackAtLeastOneTime && currentTrackState != CTS_DELETED)
+    {
+        pCurrentTrack->stopSound();
+    }
+
+    for(size_t i = 0; i < vAudioTracks.size(); i++)
+    {
+        removeTrack(vAudioTracks[i]);
+    }
+
+    vAudioTracks.clear();
+
+    vPlayedHistory.clear();
+
+    currentTrackState = CTS_DELETED;
+}
+
 void AudioCore::setVolume(int iVolume)
 {
     pAudioEngine->setMasterVolume(iVolume / 100.0f);
@@ -220,6 +325,21 @@ std::wstring AudioCore::getTrackTitle(const std::wstring &sAudioPath)
     return sTrackTitle;
 }
 
+void AudioCore::removeTrack(XAudioFile *pAudio)
+{
+    pAudio->pOpenedStream->close();
+    delete pAudio->pOpenedStream;
+
+    std::promise<bool> promiseRemoveWidget;
+    std::future<bool> future = promiseRemoveWidget.get_future();
+
+    pMainWindow->removeTrackWidget(pAudio->pTrackWidget, &promiseRemoveWidget);
+
+    future.get();
+
+    delete pAudio;
+}
+
 AudioCore::~AudioCore()
 {
     if (currentTrackState != CTS_DELETED)
@@ -231,15 +351,7 @@ AudioCore::~AudioCore()
 
     for (size_t i = 0; i < vAudioTracks.size(); i++)
     {
-        vAudioTracks[i].pOpenedStream->close();
-        delete vAudioTracks[i].pOpenedStream;
-
-        std::promise<bool> promiseRemoveWidget;
-        std::future<bool> future = promiseRemoveWidget.get_future();
-
-        pMainWindow->removeTrackWidget(vAudioTracks[i].pTrackWidget, &promiseRemoveWidget);
-
-        future.get();
+        removeTrack(vAudioTracks[i]);
     }
 
     vAudioTracks.clear();

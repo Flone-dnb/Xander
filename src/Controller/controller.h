@@ -21,15 +21,18 @@ public:
     ~Controller();
 
 
-    void addTracks(const std::vector<std::wstring>& vFiles);
-    void addTracks(const std::wstring& sFolderPath);
+    void addTracks  (const std::vector<std::wstring>& vFiles);
+    void addTracks  (const std::wstring& sFolderPath);
 
-    void playTrack(const std::wstring& sTrackTitle);
-    void playTrack();
-    void pauseTrack();
-    void stopTrack();
+    void playTrack  (const std::wstring& sTrackTitle);
+    void playTrack  ();
+    void pauseTrack ();
+    void stopTrack  ();
+    void prevTrack  ();
 
-    void setVolume(int iVolume);
+    void clearTracklist();
+
+    void setVolume   (int iVolume);
 
 private:
 

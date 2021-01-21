@@ -43,6 +43,9 @@ public:
     void playTrack   ();
     void pauseTrack  ();
     void stopTrack   ();
+    void prevTrack   ();
+
+    void clearTracklist();
 
     void setVolume   (int iVolume);
 
@@ -50,13 +53,16 @@ private:
 
     std::wstring getTrackTitle(const std::wstring& sAudioPath);
 
+    void removeTrack(XAudioFile* pAudio);
+
 
     MainWindow*   pMainWindow;
     SAudioEngine* pAudioEngine;
     SSound*       pCurrentTrack;
 
 
-    std::vector<XAudioFile> vAudioTracks;
+    std::vector<XAudioFile*> vAudioTracks;
+    std::vector<XAudioFile*> vPlayedHistory;
 
     std::mutex    mtxProcess;
 

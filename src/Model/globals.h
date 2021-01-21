@@ -25,6 +25,7 @@ struct XAudioFile
 #define RES_LOGO_PATH ":/logo.png"
 
 #define DEFAULT_VOLUME 80
+#define MAX_HISTORY_SIZE 50
 
 #define EXTENSION_MP3 ".mp3"
 #define EXTENSION_WAV ".wav"
