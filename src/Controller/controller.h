@@ -29,6 +29,10 @@ public:
     void pauseTrack ();
     void stopTrack  ();
     void prevTrack  ();
+    void nextTrack  ();
+
+    void setRandomTrack();
+    void setRepeatTrack();
 
     void clearTracklist();
 

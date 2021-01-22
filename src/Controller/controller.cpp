@@ -27,12 +27,12 @@ void Controller::addTracks(const std::wstring &sFolderPath)
 
 void Controller::playTrack(const std::wstring &sTrackTitle)
 {
-    pAudioCore->playTrack(sTrackTitle);
+    pAudioCore->playTrack(sTrackTitle, false);
 }
 
 void Controller::playTrack()
 {
-    pAudioCore->playTrack();
+    pAudioCore->playTrack(false);
 }
 
 void Controller::pauseTrack()
@@ -42,12 +42,27 @@ void Controller::pauseTrack()
 
 void Controller::stopTrack()
 {
-    pAudioCore->stopTrack();
+    pAudioCore->stopTrack(false);
 }
 
 void Controller::prevTrack()
 {
     pAudioCore->prevTrack();
+}
+
+void Controller::nextTrack()
+{
+    pAudioCore->nextTrack(false);
+}
+
+void Controller::setRandomTrack()
+{
+    pAudioCore->setRandomTrack();
+}
+
+void Controller::setRepeatTrack()
+{
+    pAudioCore->setRepeatTrack();
 }
 
 void Controller::clearTracklist()

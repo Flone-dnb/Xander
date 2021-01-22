@@ -104,6 +104,7 @@ private:
 
     bool createSourceReader(const std::wstring& sAudioFilePath, SourceReaderCallback** pAsyncSourceReaderCallback, IMFSourceReader*& pOutSourceReader, WAVEFORMATEX** pFormat, unsigned int& iWaveFormatSize);
 
+    bool waitForUnpause();
 
 
     void onPlayEnd();

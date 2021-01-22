@@ -12,6 +12,7 @@
 #include <vector>
 #include <fstream>
 #include <mutex>
+#include <random>
 
 // Custom
 #include "Model/globals.h"
@@ -39,11 +40,15 @@ public:
     void addTracks   (const std::wstring& sFolderPath);
     void removeTrack (const std::wstring& sAudioTitle);
 
-    void playTrack   (const std::wstring& sTrackTitle);
-    void playTrack   ();
+    void playTrack   (const std::wstring& sTrackTitle, bool bCalledFromOtherThread);
+    void playTrack   (bool bCalledFromOtherThread);
     void pauseTrack  ();
-    void stopTrack   ();
+    void stopTrack   (bool bCalledFromOtherThread);
     void prevTrack   ();
+    void nextTrack   (bool bCalledFromOtherThread);
+
+    void setRandomTrack();
+    void setRepeatTrack();
 
     void clearTracklist();
 
@@ -54,11 +59,14 @@ private:
     std::wstring getTrackTitle(const std::wstring& sAudioPath);
 
     void removeTrack(XAudioFile* pAudio);
+    void onCurrentTrackEnded(SSound* pTrack);
 
 
     MainWindow*   pMainWindow;
     SAudioEngine* pAudioEngine;
     SSound*       pCurrentTrack;
+
+    std::mt19937_64*  pRndGen;
 
 
     std::vector<XAudioFile*> vAudioTracks;
@@ -68,4 +76,7 @@ private:
 
     bool          bLoadedTrackAtLeastOneTime;
     CURRENT_TRACK_STATE currentTrackState;
+
+    bool          bRandomTrack;
+    bool          bRepeatTrack;
 };

@@ -13,6 +13,7 @@
 // Custom
 #include "AudioEngine/SSoundMix/ssoundmix.h"
 
+
 SSound::SSound(SAudioEngine* pAudioEngine)
 {
     this->pAudioEngine = pAudioEngine;
@@ -165,7 +166,6 @@ bool SSound::loadAudioFile(const std::wstring &sAudioFilePath, bool bStreamAudio
 
 
     soundState = SS_NOT_PLAYING;
-
 
     return false;
 }
@@ -381,10 +381,9 @@ bool SSound::playSound()
     }
 
 
-    if (soundState == SS_PAUSED)
+    if (bCurrentlyStreaming && bUseStreaming)
     {
-        unpauseSound();
-        return false;
+        bStopStreaming = true;
     }
 
     if (soundState == SS_PLAYING)
@@ -395,6 +394,7 @@ bool SSound::playSound()
 
     bStopStreaming = false;
     bSoundStoppedManually = false;
+    bCurrentlyStreaming = false;
 
     iCurrentSamplePosition = 0;
 
@@ -463,19 +463,18 @@ bool SSound::pauseSound()
         iCurrentSamplePosition = state.SamplesPlayed;
     }
 
+    mtxSoundState.lock();
+
+    soundState = SS_PAUSED;
+
+    mtxSoundState.unlock();
+
     HRESULT hr = pSourceVoice->Stop();
     if (FAILED(hr))
     {
         pAudioEngine->showError(hr, L"Sound::pauseSound::Stop()");
         return true;
     }
-
-
-    mtxSoundState.lock();
-
-    soundState = SS_PAUSED;
-
-    mtxSoundState.unlock();
 
     return false;
 }
@@ -525,11 +524,6 @@ bool SSound::stopSound()
         return false;
     }
 
-    if (soundState == SS_PAUSED)
-    {
-        unpauseSound();
-    }
-
 
     bSoundStoppedManually = true;
 
@@ -537,9 +531,6 @@ bool SSound::stopSound()
     {
         SetEvent(voiceCallback.hStreamEnd);
     }
-
-
-    stopStreaming();
 
 
     if (pSourceVoice)
@@ -576,6 +567,25 @@ bool SSound::stopSound()
 
 
     audioBuffer.PlayBegin = 0;
+
+
+    if (bCurrentlyStreaming && bUseStreaming)
+    {
+        bStopStreaming = true;
+
+        if (soundState == SS_PAUSED)
+        {
+            mtxSoundState.lock();
+
+            soundState = SS_PLAYING;
+
+            mtxSoundState.unlock();
+
+            SetEvent(hEventUnpauseSound);
+        }
+
+        stopStreaming();
+    }
 
 
     soundState = SS_NOT_PLAYING;
@@ -971,9 +981,8 @@ void SSound::stopStreaming()
 
         if (bCurrentlyStreaming)
         {
-            mtxStreamingSwitch.unlock();
-
             std::future<bool> future = promiseStreaming.get_future();
+            mtxStreamingSwitch.unlock();
             future.get();
         }
         else
@@ -1243,11 +1252,10 @@ bool SSound::streamAudioFile(IMFSourceReader *pAsyncReader)
 
     if (loopStream(pAsyncReader, pSourceVoice))
     {
-        promiseStreaming.set_value(false);
-
         mtxStreamingSwitch.lock();
         bCurrentlyStreaming = false;
         mtxStreamingSwitch.unlock();
+        promiseStreaming.set_value(false);
 
         return true;
     }
@@ -1258,12 +1266,11 @@ bool SSound::streamAudioFile(IMFSourceReader *pAsyncReader)
     pSourceVoice->Stop();
 
 
-    promiseStreaming.set_value(false);
-
-
     mtxStreamingSwitch.lock();
     bCurrentlyStreaming = false;
     mtxStreamingSwitch.unlock();
+    promiseStreaming.set_value(false);
+
 
 
     return false;
@@ -1284,19 +1291,14 @@ bool SSound::loopStream(IMFSourceReader *pAsyncReader, IXAudio2SourceVoice *pSou
     {
         if (bStopStreaming)
         {
+            // Exit.
             break;
         }
 
-        mtxSoundState.lock();
-        if (soundState == SS_PAUSED)
-        {
-            mtxSoundState.unlock();
 
-            WaitForSingleObject(hEventUnpauseSound, INFINITE);
-        }
-        else
+        if (waitForUnpause())
         {
-            mtxSoundState.unlock();
+            break;
         }
 
 
@@ -1407,6 +1409,11 @@ bool SSound::loopStream(IMFSourceReader *pAsyncReader, IXAudio2SourceVoice *pSou
             }
 
             WaitForSingleObject(voiceCallback.hBufferEndEvent, INFINITE);
+
+            if (waitForUnpause())
+            {
+                return false;
+            }
         }
 
 
@@ -1566,6 +1573,30 @@ bool SSound::createSourceReader(const std::wstring &sAudioFilePath, SourceReader
     return false;
 }
 
+bool SSound::waitForUnpause()
+{
+    mtxSoundState.lock();
+    if (soundState == SS_PAUSED)
+    {
+        mtxSoundState.unlock();
+
+        WaitForSingleObject(hEventUnpauseSound, INFINITE);
+    }
+    else
+    {
+        mtxSoundState.unlock();
+    }
+
+
+    if (bStopStreaming)
+    {
+        // Exit.
+        return true;
+    }
+
+    return false;
+}
+
 void SSound::onPlayEnd()
 {
     do
@@ -1573,6 +1604,8 @@ void SSound::onPlayEnd()
        WaitForSingleObject(voiceCallback.hStreamEnd, INFINITE);
 
        if (bDestroyCalled) return;
+
+       if (bSoundStoppedManually) break;
 
        if (bUseStreaming == false)
        {

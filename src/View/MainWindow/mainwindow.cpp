@@ -37,6 +37,10 @@ MainWindow::MainWindow(QWidget *parent)
     bPlayButtonStatePlay = true;
     bRepeatButtonStateActive = false;
     bRandomButtonStateActive = false;
+
+    // This to this.
+    connect(this, &MainWindow::signalSetNewPlayingTrack, this, &MainWindow::slotSetNewPlayingTrack);
+    connect(this, &MainWindow::signalChangePlayButtonStyle, this, &MainWindow::slotChangePlayButtonStyle);
 }
 
 void MainWindow::onExecCalled()
@@ -162,24 +166,23 @@ void MainWindow::applyStyle()
     }
 }
 
-void MainWindow::changePlayButtonStyle(bool bChangeStyleToPause)
+void MainWindow::changePlayButtonStyle(bool bChangeStyleToPause, bool bSendSignal)
 {
     std::lock_guard<std::mutex> lock(mtxUIStateChange);
 
-    if (bChangeStyleToPause)
+    if (bSendSignal)
     {
-        ui->pushButton_play->setProperty("cssClass", "pause");
+        std::promise<bool> promiseFinish;
+        std::future<bool> f = promiseFinish.get_future();
+
+        emit signalChangePlayButtonStyle(bChangeStyleToPause, &promiseFinish);
+
+        f.get();
     }
     else
     {
-        ui->pushButton_play->setProperty("cssClass", "play");
+        slotChangePlayButtonStyle(bChangeStyleToPause, nullptr);
     }
-
-    ui->pushButton_play->style()->unpolish(ui->pushButton_play);
-    ui->pushButton_play->style()->polish(ui->pushButton_play);
-    ui->pushButton_play->update();
-
-    bPlayButtonStatePlay = !bChangeStyleToPause;
 }
 
 void MainWindow::changeRepeatButtonStyle(bool bActive)
@@ -222,34 +225,23 @@ void MainWindow::changeRandomButtonStyle(bool bActive)
     bRandomButtonStateActive = bActive;
 }
 
-void MainWindow::setNewPlayingTrack(TrackWidget *pTrackWidget)
+void MainWindow::setNewPlayingTrack(TrackWidget *pTrackWidget, bool bSendSignal)
 {
     std::lock_guard<std::mutex> lock(mtxUIStateChange);
 
-    if (pTrackWidget == pSelectedTrack)
+    if (bSendSignal)
     {
-        pSelectedTrack->setPlaying();
-        pSelectedTrack = nullptr;
+        std::promise<bool> promiseFinish;
+        std::future<bool> f = promiseFinish.get_future();
 
-        pPlayingTrack = pTrackWidget;
+        emit signalSetNewPlayingTrack(pTrackWidget, &promiseFinish);
+
+        f.get();
     }
-
-    if (pPlayingTrack == nullptr)
+    else
     {
-        pPlayingTrack = pTrackWidget;
-
-        pTrackWidget->setPlaying();
+        slotSetNewPlayingTrack(pTrackWidget, nullptr);
     }
-    else if (pPlayingTrack != pTrackWidget)
-    {
-        pPlayingTrack->setIdle();
-
-        pPlayingTrack = pTrackWidget;
-
-        pTrackWidget->setPlaying();
-    }
-
-    ui->scrollArea_tracklist->ensureWidgetVisible(pTrackWidget);
 }
 
 void MainWindow::on_horizontalSlider_volume_valueChanged(int value)
@@ -370,6 +362,62 @@ void MainWindow::on_trackWidget_mouseDoublePress(TrackWidget *pPressedTrack)
     pController->playTrack(pPressedTrack->getTrackTitle().toStdWString());
 }
 
+void MainWindow::slotSetNewPlayingTrack(TrackWidget *pTrackWidget, std::promise<bool>* pPromiseFinish)
+{
+    if (pTrackWidget == pSelectedTrack)
+    {
+        pSelectedTrack->setPlaying();
+        pSelectedTrack = nullptr;
+
+        pPlayingTrack = pTrackWidget;
+    }
+
+    if (pPlayingTrack == nullptr)
+    {
+        pPlayingTrack = pTrackWidget;
+
+        pTrackWidget->setPlaying();
+    }
+    else if (pPlayingTrack != pTrackWidget)
+    {
+        pPlayingTrack->setIdle();
+
+        pPlayingTrack = pTrackWidget;
+
+        pTrackWidget->setPlaying();
+    }
+
+    ui->scrollArea_tracklist->ensureWidgetVisible(pTrackWidget);
+
+    if (pPromiseFinish)
+    {
+        pPromiseFinish->set_value(false);
+    }
+}
+
+void MainWindow::slotChangePlayButtonStyle(bool bChangeStyleToPause, std::promise<bool> *pPromiseFinish)
+{
+    if (bChangeStyleToPause)
+    {
+        ui->pushButton_play->setProperty("cssClass", "pause");
+    }
+    else
+    {
+        ui->pushButton_play->setProperty("cssClass", "play");
+    }
+
+    ui->pushButton_play->style()->unpolish(ui->pushButton_play);
+    ui->pushButton_play->style()->polish(ui->pushButton_play);
+    ui->pushButton_play->update();
+
+    bPlayButtonStatePlay = !bChangeStyleToPause;
+
+    if (pPromiseFinish)
+    {
+        pPromiseFinish->set_value(false);
+    }
+}
+
 void MainWindow::on_pushButton_play_clicked()
 {
     mtxUIStateChange.lock();
@@ -398,6 +446,26 @@ void MainWindow::on_pushButton_stop_clicked()
 void MainWindow::on_pushButton_prev_track_clicked()
 {
     pController->prevTrack();
+}
+
+void MainWindow::on_pushButton_clear_clicked()
+{
+    pController->clearTracklist();
+}
+
+void MainWindow::on_pushButton_repeat_clicked()
+{
+    pController->setRepeatTrack();
+}
+
+void MainWindow::on_pushButton_random_clicked()
+{
+    pController->setRandomTrack();
+}
+
+void MainWindow::on_pushButton_next_track_clicked()
+{
+    pController->nextTrack();
 }
 
 MainWindow::~MainWindow()

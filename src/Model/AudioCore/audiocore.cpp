@@ -10,6 +10,7 @@
 // STL
 #include <future>
 #include <filesystem>
+#include <functional>
 
 // Custom
 #include "View/MainWindow/mainwindow.h"
@@ -23,13 +24,21 @@ AudioCore::AudioCore(MainWindow* pMainWindow)
 {
     this->pMainWindow = pMainWindow;
 
+    pRndGen = new std::mt19937_64( std::random_device{}() );
+
     pAudioEngine = new SAudioEngine(pMainWindow);
     pAudioEngine->init();
     pAudioEngine->setMasterVolume(DEFAULT_VOLUME / 100.0f);
 
     pCurrentTrack = new SSound(pAudioEngine);
 
+    std::function<void(SSound*)> f = std::bind(&AudioCore::onCurrentTrackEnded, this, std::placeholders::_1);
+    pCurrentTrack->setOnPlayEndCallback(f);
+
+
     bLoadedTrackAtLeastOneTime = false;
+    bRandomTrack = false;
+    bRepeatTrack = false;
 
     currentTrackState = CTS_DELETED;
 }
@@ -101,6 +110,21 @@ void AudioCore::removeTrack(const std::wstring &sAudioTitle)
     {
         if (vAudioTracks[i]->sAudioTitle == sAudioTitle)
         {
+            for (size_t j = 0; j < vPlayedHistory.size();)
+            {
+                // Remove from history.
+
+                if (vPlayedHistory[j] == vAudioTracks[i])
+                {
+                    vPlayedHistory.erase(vPlayedHistory.begin() + j);
+                }
+                else
+                {
+                    j++;
+                }
+            }
+
+
             vAudioTracks[i]->pOpenedStream->close();
             delete vAudioTracks[i]->pOpenedStream;
 
@@ -124,7 +148,7 @@ void AudioCore::removeTrack(const std::wstring &sAudioTitle)
     }
 }
 
-void AudioCore::playTrack(const std::wstring &sTrackTitle)
+void AudioCore::playTrack(const std::wstring &sTrackTitle, bool bCalledFromOtherThread)
 {
     std::lock_guard<std::mutex> lock(mtxProcess);
 
@@ -142,7 +166,7 @@ void AudioCore::playTrack(const std::wstring &sTrackTitle)
             bLoadedTrackAtLeastOneTime = true;
             currentTrackState = CTS_PLAYING;
 
-            pMainWindow->changePlayButtonStyle(true);
+            pMainWindow->changePlayButtonStyle(true, bCalledFromOtherThread);
 
 
 
@@ -170,17 +194,28 @@ void AudioCore::playTrack(const std::wstring &sTrackTitle)
     }
 }
 
-void AudioCore::playTrack()
+void AudioCore::playTrack(bool bCalledFromOtherThread)
 {
     std::lock_guard<std::mutex> lock(mtxProcess);
 
     if (bLoadedTrackAtLeastOneTime && currentTrackState != CTS_DELETED)
     {
-        pCurrentTrack->playSound();
+        if (currentTrackState == CTS_PAUSED)
+        {
+            pCurrentTrack->unpauseSound();
 
-        pMainWindow->changePlayButtonStyle(true);
+            currentTrackState = CTS_PLAYING;
 
-        currentTrackState = CTS_PLAYING;
+            pMainWindow->changePlayButtonStyle(true, bCalledFromOtherThread);
+        }
+        else
+        {
+            pCurrentTrack->playSound();
+
+            pMainWindow->changePlayButtonStyle(true, bCalledFromOtherThread);
+
+            currentTrackState = CTS_PLAYING;
+        }
     }
 }
 
@@ -196,12 +231,20 @@ void AudioCore::pauseTrack()
 
             currentTrackState = CTS_PAUSED;
 
-            pMainWindow->changePlayButtonStyle(false);
+            pMainWindow->changePlayButtonStyle(false, false);
+        }
+        else if (currentTrackState == CTS_PAUSED)
+        {
+            pCurrentTrack->unpauseSound();
+
+            currentTrackState = CTS_PLAYING;
+
+            pMainWindow->changePlayButtonStyle(true, false);
         }
     }
 }
 
-void AudioCore::stopTrack()
+void AudioCore::stopTrack(bool bCalledFromOtherThread)
 {
     std::lock_guard<std::mutex> lock(mtxProcess);
 
@@ -211,13 +254,19 @@ void AudioCore::stopTrack()
 
         currentTrackState = CTS_STOPPED;
 
-        pMainWindow->changePlayButtonStyle(false);
+        pMainWindow->changePlayButtonStyle(false, bCalledFromOtherThread);
     }
 }
 
 void AudioCore::prevTrack()
 {
     mtxProcess.lock();
+
+    if (vAudioTracks.size() == 0)
+    {
+        mtxProcess.unlock();
+        return;
+    }
 
     if (bLoadedTrackAtLeastOneTime && currentTrackState != CTS_DELETED)
     {
@@ -227,32 +276,15 @@ void AudioCore::prevTrack()
 
             bool bFound = false;
 
-            do
+            // Should 100% find.
+            for (size_t i = 0; i < vAudioTracks.size(); i++)
             {
-                for (size_t i = 0; i < vAudioTracks.size(); i++)
+                if (vAudioTracks[i] == pFind)
                 {
-                    if (vAudioTracks[i] == pFind)
-                    {
-                        bFound = true;
-                        break;
-                    }
-                }
-
-                if (bFound == false)
-                {
-                    // Track was removed.
-                    vPlayedHistory.pop_back();
-                }
-
-                if (vPlayedHistory.size() == 0)
-                {
+                    bFound = true;
                     break;
                 }
-                else if (bFound == false)
-                {
-                    pFind = vPlayedHistory.back();
-                }
-            }while(bFound == false);
+            }
 
             if (bFound)
             {
@@ -260,13 +292,16 @@ void AudioCore::prevTrack()
                 vPlayedHistory.pop_back();
 
                 mtxProcess.unlock();
-                playTrack(pFind->sAudioTitle);
+                playTrack(pFind->sAudioTitle, false);
 
-                pMainWindow->setNewPlayingTrack(pFind->pTrackWidget);
+                pMainWindow->setNewPlayingTrack(pFind->pTrackWidget, false);
             }
             else
             {
                 mtxProcess.unlock();
+
+                pMainWindow->showMessageBox(L"Error", L"An error occurred at AudioCore::prevTrack(): "
+                                                      "could not find XAudioFile.", true);
             }
         }
         else
@@ -277,6 +312,126 @@ void AudioCore::prevTrack()
     else
     {
         mtxProcess.unlock();
+    }
+}
+
+void AudioCore::nextTrack(bool bCalledFromOtherThread)
+{
+    mtxProcess.lock();
+
+    if (vAudioTracks.size() == 0)
+    {
+        mtxProcess.unlock();
+        return;
+    }
+
+    if (bLoadedTrackAtLeastOneTime && currentTrackState != CTS_DELETED)
+    {
+        if (bRandomTrack)
+        {
+            size_t iNextTrackIndex = 0;
+
+            size_t iCurrentIndex = 0;
+
+            for (size_t i = 0; i < vAudioTracks.size(); i++)
+            {
+                if (vAudioTracks[i] == vPlayedHistory.back())
+                {
+                    iCurrentIndex = i;
+                }
+            }
+
+
+            if (vAudioTracks.size() > 1)
+            {
+                std::uniform_int_distribution<> uid(0, static_cast<int>(vAudioTracks.size()) - 1);
+
+                do
+                {
+                    iNextTrackIndex = static_cast<size_t>(uid(*pRndGen));
+
+                }while (iNextTrackIndex == iCurrentIndex);
+
+                mtxProcess.unlock();
+
+                playTrack(vAudioTracks[iNextTrackIndex]->sAudioTitle, bCalledFromOtherThread);
+
+                pMainWindow->setNewPlayingTrack(vAudioTracks[iNextTrackIndex]->pTrackWidget, bCalledFromOtherThread);
+            }
+            else
+            {
+                mtxProcess.unlock();
+
+                stopTrack(bCalledFromOtherThread);
+                playTrack(bCalledFromOtherThread);
+            }
+        }
+        else if (bRepeatTrack)
+        {
+            mtxProcess.unlock();
+
+            stopTrack(bCalledFromOtherThread);
+            playTrack(bCalledFromOtherThread);
+        }
+        else
+        {
+            size_t iCurrentIndex = 0;
+
+            for (size_t i = 0; i < vAudioTracks.size(); i++)
+            {
+                if (vAudioTracks[i] == vPlayedHistory.back())
+                {
+                    iCurrentIndex = i;
+                }
+            }
+
+            size_t iNextTrackIndex = iCurrentIndex + 1;
+
+            if (iCurrentIndex == vAudioTracks.size() - 1)
+            {
+                iNextTrackIndex = 0;
+            }
+
+            mtxProcess.unlock();
+
+            playTrack(vAudioTracks[iNextTrackIndex]->sAudioTitle, bCalledFromOtherThread);
+
+            pMainWindow->setNewPlayingTrack(vAudioTracks[iNextTrackIndex]->pTrackWidget, bCalledFromOtherThread);
+        }
+    }
+    else
+    {
+        mtxProcess.unlock();
+    }
+}
+
+void AudioCore::setRandomTrack()
+{
+    std::lock_guard<std::mutex> lock(mtxProcess);
+
+    bRandomTrack = !bRandomTrack;
+
+    pMainWindow->changeRandomButtonStyle(bRandomTrack);
+
+    if (bRandomTrack && bRepeatTrack)
+    {
+        bRepeatTrack = false;
+        pMainWindow->changeRepeatButtonStyle(false);
+    }
+}
+
+void AudioCore::setRepeatTrack()
+{
+    std::lock_guard<std::mutex> lock(mtxProcess);
+
+    bRepeatTrack = !bRepeatTrack;
+
+    pMainWindow->changeRepeatButtonStyle(bRepeatTrack);
+
+    if (bRepeatTrack && bRandomTrack)
+    {
+        bRandomTrack = false;
+        pMainWindow->changeRandomButtonStyle(false);
     }
 }
 
@@ -299,6 +454,8 @@ void AudioCore::clearTracklist()
     vPlayedHistory.clear();
 
     currentTrackState = CTS_DELETED;
+
+    pMainWindow->changePlayButtonStyle(false, false);
 }
 
 void AudioCore::setVolume(int iVolume)
@@ -345,6 +502,22 @@ void AudioCore::removeTrack(XAudioFile *pAudio)
     delete pAudio;
 }
 
+void AudioCore::onCurrentTrackEnded(SSound* pTrack)
+{
+    if (pTrack->isSoundStoppedManually() == false)
+    {
+        if (bRepeatTrack)
+        {
+            stopTrack(true);
+            playTrack(true);
+        }
+        else
+        {
+            nextTrack(true);
+        }
+    }
+}
+
 AudioCore::~AudioCore()
 {
     if (currentTrackState != CTS_DELETED)
@@ -360,6 +533,8 @@ AudioCore::~AudioCore()
     }
 
     vAudioTracks.clear();
+
+    delete pRndGen;
 
     delete pAudioEngine;
 }

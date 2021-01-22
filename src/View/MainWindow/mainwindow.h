@@ -28,6 +28,12 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
+signals:
+
+    // This to this.
+    void signalSetNewPlayingTrack (TrackWidget* pTrackWidget, std::promise<bool>* pPromiseFinish);
+    void signalChangePlayButtonStyle(bool bChangeStyleToPause, std::promise<bool>* pPromiseFinish);
+
 public:
 
     MainWindow(QWidget *parent = nullptr);
@@ -41,11 +47,11 @@ public:
     void removeTrackWidget        (TrackWidget* pTrackWidget, std::promise<bool>* pPromiseRemoveWidget);
 
 
-    void changePlayButtonStyle    (bool bChangeStyleToPause);
+    void changePlayButtonStyle    (bool bChangeStyleToPause, bool bSendSignal);
     void changeRepeatButtonStyle  (bool bActive);
     void changeRandomButtonStyle  (bool bActive);
 
-    void setNewPlayingTrack       (TrackWidget* pTrackWidget);
+    void setNewPlayingTrack       (TrackWidget* pTrackWidget, bool bSendSignal);
 
 
     void showMessageBox           (std::wstring sMessageTitle, std::wstring sMessageText, bool bErrorMessage);
@@ -61,12 +67,21 @@ protected:
 
 private slots:
 
+    // This to this.
+    void  slotSetNewPlayingTrack          (TrackWidget* pTrackWidget, std::promise<bool>* pPromiseFinish);
+    void  slotChangePlayButtonStyle       (bool bChangeStyleToPause, std::promise<bool>* pPromiseFinish);
+
+    // Tray icon.
     void  slotTrayIconActivated           ();
 
     // Main UI button.
     void  on_pushButton_play_clicked      ();
     void  on_pushButton_stop_clicked      ();
     void  on_pushButton_prev_track_clicked();
+    void  on_pushButton_clear_clicked     ();
+    void  on_pushButton_repeat_clicked    ();
+    void  on_pushButton_random_clicked    ();
+    void  on_pushButton_next_track_clicked();
 
     // Volume slider.
     void  on_horizontalSlider_volume_valueChanged (int value);

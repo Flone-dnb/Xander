@@ -11,6 +11,7 @@
 #include <fstream>
 #include <string>
 
+
 struct XAudioFile
 {
     std::wstring sAudioTitle;
