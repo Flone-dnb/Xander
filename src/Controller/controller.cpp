@@ -75,6 +75,21 @@ void Controller::setVolume(int iVolume)
     pAudioCore->setVolume(iVolume);
 }
 
+void Controller::searchFindPrev()
+{
+    pAudioCore->searchFindPrev();
+}
+
+void Controller::searchFindNext()
+{
+    pAudioCore->searchFindNext();
+}
+
+void Controller::searchTextSet(const std::wstring &sKeyword)
+{
+    pAudioCore->searchTextSet(sKeyword);
+}
+
 Controller::~Controller()
 {
     delete pAudioCore;

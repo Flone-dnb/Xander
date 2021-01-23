@@ -15,6 +15,7 @@
 #include <QStyle>
 #include <QScrollBar>
 #include <QFileDialog>
+#include <QKeyEvent>
 
 // Custom
 #include "Controller/controller.h"
@@ -22,6 +23,7 @@
 #include "View/AboutWindow/aboutwindow.h"
 #include "View/TrackWidget/trackwidget.h"
 #include "View/AboutQtWindow/aboutqtwindow.h"
+#include "View/SearchWindow/searchwindow.h"
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -140,6 +142,22 @@ void MainWindow::hideEvent(QHideEvent *event)
     pTrayIcon->show();
 }
 
+void MainWindow::keyPressEvent(QKeyEvent *ev)
+{
+    if (ev->modifiers() == Qt::KeyboardModifier::ControlModifier && ev->key() == Qt::Key_F)
+    {
+        SearchWindow* pSearchWindow = new SearchWindow (this);
+        pSearchWindow->setWindowModality(Qt::WindowModal);
+
+        connect (pSearchWindow, &SearchWindow::findPrev,             this,          &MainWindow::slotSearchFindPrev);
+        connect (pSearchWindow, &SearchWindow::findNext,             this,          &MainWindow::slotSearchFindNext);
+        connect (pSearchWindow, &SearchWindow::searchTextChanged,    this,          &MainWindow::slotSearchTextSet);
+        connect (this,          &MainWindow::signalSearchMatchCount, pSearchWindow, &SearchWindow::searchMatchCount);
+
+        pSearchWindow->show();
+    }
+}
+
 void MainWindow::slotTrayIconActivated()
 {
     pTrayIcon->hide();
@@ -243,6 +261,18 @@ void MainWindow::setNewPlayingTrack(TrackWidget *pTrackWidget, bool bSendSignal)
     {
         slotSetNewPlayingTrack(pTrackWidget, nullptr);
     }
+}
+
+void MainWindow::setSearchMatchCount(size_t iMatches)
+{
+    emit signalSearchMatchCount(iMatches);
+}
+
+void MainWindow::searchSetSelected(TrackWidget* pTrackWidget)
+{
+    on_trackWidget_mousePress(pTrackWidget);
+
+    ui->scrollArea_tracklist->ensureWidgetVisible(pTrackWidget);
 }
 
 void MainWindow::on_horizontalSlider_volume_valueChanged(int value)
@@ -361,6 +391,21 @@ void MainWindow::on_trackWidget_mouseDoublePress(TrackWidget *pPressedTrack)
     mtxUIStateChange.unlock();
 
     pController->playTrack(pPressedTrack->getTrackTitle().toStdWString());
+}
+
+void MainWindow::slotSearchFindPrev()
+{
+    pController->searchFindPrev ();
+}
+
+void MainWindow::slotSearchFindNext()
+{
+    pController->searchFindNext ();
+}
+
+void MainWindow::slotSearchTextSet(QString keyword)
+{
+    pController->searchTextSet (keyword.toStdWString());
 }
 
 void MainWindow::slotSetNewPlayingTrack(TrackWidget *pTrackWidget, std::promise<bool>* pPromiseFinish)

@@ -25,6 +25,7 @@ SOURCES += \
     ../src/Model/AudioEngine/SSoundMix/ssoundmix.cpp \
     ../src/View/AboutQtWindow/aboutqtwindow.cpp \
     ../src/View/AboutWindow/aboutwindow.cpp \
+    ../src/View/SearchWindow/searchwindow.cpp \
     ../src/View/TrackList/tracklist.cpp \
     ../src/View/TrackWidget/trackwidget.cpp \
     ../src/main.cpp \
@@ -41,6 +42,7 @@ HEADERS += \
     ../src/View/AboutQtWindow/aboutqtwindow.h \
     ../src/View/AboutWindow/aboutwindow.h \
     ../src/View/MainWindow/mainwindow.h \
+    ../src/View/SearchWindow/searchwindow.h \
     ../src/View/TrackList/tracklist.h \
     ../src/View/TrackWidget/trackwidget.h
 
@@ -48,6 +50,7 @@ FORMS += \
     ../src/View/AboutQtWindow/aboutqtwindow.ui \
     ../src/View/AboutWindow/aboutwindow.ui \
     ../src/View/MainWindow/mainwindow.ui \
+    ../src/View/SearchWindow/searchwindow.ui \
     ../src/View/TrackList/tracklist.ui \
     ../src/View/TrackWidget/trackwidget.ui
 

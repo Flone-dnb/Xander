@@ -36,9 +36,11 @@ public:
     AudioCore(MainWindow* pMainWindow);
     ~AudioCore();
 
+
     void addTracks   (const std::vector<std::wstring>& vFiles);
     void addTracks   (const std::wstring& sFolderPath);
     void removeTrack (const std::wstring& sAudioTitle);
+
 
     void playTrack   (const std::wstring& sTrackTitle, bool bCalledFromOtherThread);
     void playTrack   (bool bCalledFromOtherThread);
@@ -47,12 +49,20 @@ public:
     void prevTrack   ();
     void nextTrack   (bool bCalledFromOtherThread);
 
+
     void setRandomTrack();
     void setRepeatTrack();
 
+
     void clearTracklist();
 
+
     void setVolume   (int iVolume);
+
+
+    void searchFindPrev  ();
+    void searchFindNext  ();
+    void searchTextSet   (const std::wstring& sKeyword);
 
 private:
 
@@ -60,6 +70,8 @@ private:
 
     void removeTrack(XAudioFile* pAudio);
     void onCurrentTrackEnded(SSound* pTrack);
+
+    size_t findCaseInsensitive(std::wstring sText, std::wstring sKeyword);
 
 
     MainWindow*   pMainWindow;
@@ -71,6 +83,11 @@ private:
 
     std::vector<XAudioFile*> vAudioTracks;
     std::vector<XAudioFile*> vPlayedHistory;
+
+    // Search
+    std::vector<size_t> vSearchResult;
+    size_t              iCurrentPosInSearchVec;
+    bool                bFirstSearchAfterKeyChange;
 
     std::mutex    mtxProcess;
 

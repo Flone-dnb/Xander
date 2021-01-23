@@ -31,8 +31,10 @@ class MainWindow : public QMainWindow
 signals:
 
     // This to this.
-    void signalSetNewPlayingTrack (TrackWidget* pTrackWidget, std::promise<bool>* pPromiseFinish);
-    void signalChangePlayButtonStyle(bool bChangeStyleToPause, std::promise<bool>* pPromiseFinish);
+    void signalSetNewPlayingTrack    (TrackWidget* pTrackWidget, std::promise<bool>* pPromiseFinish);
+    void signalChangePlayButtonStyle (bool bChangeStyleToPause, std::promise<bool>* pPromiseFinish);
+
+    void signalSearchMatchCount      (size_t iCount);
 
 public:
 
@@ -51,7 +53,12 @@ public:
     void changeRepeatButtonStyle  (bool bActive);
     void changeRandomButtonStyle  (bool bActive);
 
+
     void setNewPlayingTrack       (TrackWidget* pTrackWidget, bool bSendSignal);
+
+
+    void setSearchMatchCount      (size_t iMatches);
+    void searchSetSelected        (TrackWidget* pTrackWidget);
 
 
     void showMessageBox           (std::wstring sMessageTitle, std::wstring sMessageText, bool bErrorMessage);
@@ -60,10 +67,18 @@ public:
 protected:
 
     void  hideEvent               (QHideEvent  *event);
+    void  keyPressEvent           (QKeyEvent* ev);
 
     // Track Widgets.
     void  on_trackWidget_mousePress       (TrackWidget* pPressedTrack);
     void  on_trackWidget_mouseDoublePress (TrackWidget* pPressedTrack);
+
+public slots:
+
+    // Search Window
+    void  slotSearchFindPrev  ();
+    void  slotSearchFindNext  ();
+    void  slotSearchTextSet   (QString keyword);
 
 private slots:
 

@@ -463,6 +463,92 @@ void AudioCore::setVolume(int iVolume)
     pAudioEngine->setMasterVolume(iVolume / 100.0f);
 }
 
+void AudioCore::searchFindPrev()
+{
+    std::lock_guard<std::mutex> lock(mtxProcess);
+
+    if (vSearchResult.size() > 0)
+    {
+        if (bFirstSearchAfterKeyChange == false)
+        {
+            if (iCurrentPosInSearchVec == 0)
+            {
+                iCurrentPosInSearchVec = vSearchResult.size() - 1;
+            }
+            else
+            {
+                iCurrentPosInSearchVec--;
+            }
+        }
+
+
+        if ( !(bFirstSearchAfterKeyChange == false && vSearchResult.size() == 1) ) // do not select again if matches == 1 && already selected
+        {
+            pMainWindow->searchSetSelected ( vAudioTracks[vSearchResult[iCurrentPosInSearchVec]]->pTrackWidget );
+        }
+
+
+        bFirstSearchAfterKeyChange = false;
+    }
+}
+
+void AudioCore::searchFindNext()
+{
+    std::lock_guard<std::mutex> lock(mtxProcess);
+
+    if (vSearchResult.size() > 0)
+    {
+        if (bFirstSearchAfterKeyChange == false)
+        {
+            if (iCurrentPosInSearchVec == vSearchResult.size() - 1)
+            {
+                iCurrentPosInSearchVec = 0;
+            }
+            else
+            {
+                iCurrentPosInSearchVec++;
+            }
+        }
+
+
+        if ( !(bFirstSearchAfterKeyChange == false && vSearchResult.size() == 1) ) // do not select again if matches == 1 && already selected
+        {
+            pMainWindow->searchSetSelected ( vAudioTracks[vSearchResult[iCurrentPosInSearchVec]]->pTrackWidget );
+        }
+
+
+        bFirstSearchAfterKeyChange = false;
+    }
+}
+
+void AudioCore::searchTextSet(const std::wstring &sKeyword)
+{
+    mtxProcess.lock();
+
+
+    vSearchResult.clear();
+    iCurrentPosInSearchVec = 0;
+
+    if (sKeyword != L"")
+    {
+        for (size_t i = 0; i < vAudioTracks.size(); i++)
+        {
+            if ( findCaseInsensitive( vAudioTracks[i]->sAudioTitle, const_cast<std::wstring&>(sKeyword)) != std::string::npos )
+            {
+                vSearchResult.push_back(i);
+            }
+        }
+    }
+
+    bFirstSearchAfterKeyChange = true;
+
+
+    mtxProcess.unlock();
+
+
+    pMainWindow->setSearchMatchCount (vSearchResult.size());
+}
+
 std::wstring AudioCore::getTrackTitle(const std::wstring &sAudioPath)
 {
     size_t iTitleStartIndex = 0;
@@ -516,6 +602,17 @@ void AudioCore::onCurrentTrackEnded(SSound* pTrack)
             nextTrack(true);
         }
     }
+}
+
+size_t AudioCore::findCaseInsensitive(std::wstring sText, std::wstring sKeyword)
+{
+    // All to lower case
+
+    std::transform(sText.begin(), sText.end(), sText.begin(), ::tolower);
+
+    std::transform(sKeyword.begin(), sKeyword.end(), sKeyword.begin(), ::tolower);
+
+    return sText.find(sKeyword);
 }
 
 AudioCore::~AudioCore()

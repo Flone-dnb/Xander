@@ -17,6 +17,23 @@ QWidget[cssClass="tracklist_widget"]
     border: none;
 }
 
+QLineEdit
+{
+    background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(7, 7, 7, 255), stop:1 rgba(25, 25, 25, 255));
+    border: 1px solid rgb(255, 130, 0);
+    border-radius: 10px;
+    color: white;
+    selection-background-color: rgb(255, 130, 0);
+}
+
+QPushButton
+{
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(7, 7, 7, 255), stop:1 rgba(28, 28, 28, 255));
+	border: 1px solid rgb(255, 130, 0);
+	border-radius: 1px;
+    color: white;
+}
+
 QLabel
 {
     background-color: transparent;
@@ -43,7 +60,7 @@ QMessageBox > QLabel
 QMessageBox QPushButton
 {
 	background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(7, 7, 7, 255), stop:1 rgba(28, 28, 28, 255));
-	border: 1px solid rgb(240, 0, 0);
+	border: 1px solid rgb(255, 130, 0);
 	border-radius: 6px;
     color: white;
     min-width: 60px;
@@ -53,7 +70,7 @@ QMessageBox QPushButton
 QMessageBox QPushButton:disabled
 {
 	background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(4, 4, 4, 200), stop:1 rgba(29, 29, 29, 230));
-	border: 1px solid darkred;
+	border: 1px solid rgb(155, 30, 0);
 	color: rgb(50, 50, 50);
 }
 

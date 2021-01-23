@@ -24,6 +24,7 @@ public:
     void addTracks  (const std::vector<std::wstring>& vFiles);
     void addTracks  (const std::wstring& sFolderPath);
 
+
     void playTrack  (const std::wstring& sTrackTitle);
     void playTrack  ();
     void pauseTrack ();
@@ -31,12 +32,20 @@ public:
     void prevTrack  ();
     void nextTrack  ();
 
+
     void setRandomTrack();
     void setRepeatTrack();
 
+
     void clearTracklist();
 
+
     void setVolume   (int iVolume);
+
+
+    void searchFindPrev ();
+    void searchFindNext ();
+    void searchTextSet  (const std::wstring& sKeyword);
 
 private:
 
