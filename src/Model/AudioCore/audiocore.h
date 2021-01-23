@@ -42,6 +42,10 @@ public:
     void removeTrack (const std::wstring& sAudioTitle);
 
 
+    void moveUp     (const std::wstring& sAudioTitle);
+    void moveDown   (const std::wstring& sAudioTitle);
+
+
     void playTrack   (const std::wstring& sTrackTitle, bool bCalledFromOtherThread);
     void playTrack   (bool bCalledFromOtherThread);
     void pauseTrack  ();

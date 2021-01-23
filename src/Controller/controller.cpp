@@ -25,6 +25,21 @@ void Controller::addTracks(const std::wstring &sFolderPath)
     pAudioCore->addTracks(sFolderPath);
 }
 
+void Controller::removeTrack(const std::wstring &sAudioTitle)
+{
+    pAudioCore->removeTrack(sAudioTitle);
+}
+
+void Controller::moveUp(const std::wstring &sAudioTitle)
+{
+    pAudioCore->moveUp(sAudioTitle);
+}
+
+void Controller::moveDown(const std::wstring &sAudioTitle)
+{
+    pAudioCore->moveDown(sAudioTitle);
+}
+
 void Controller::playTrack(const std::wstring &sTrackTitle)
 {
     pAudioCore->playTrack(sTrackTitle, false);

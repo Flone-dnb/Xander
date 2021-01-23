@@ -27,7 +27,7 @@ AudioCore::AudioCore(MainWindow* pMainWindow)
     pRndGen = new std::mt19937_64( std::random_device{}() );
 
     pAudioEngine = new SAudioEngine(pMainWindow);
-    pAudioEngine->init();
+    pAudioEngine->init(false);
     pAudioEngine->setMasterVolume(DEFAULT_VOLUME / 100.0f);
 
     pCurrentTrack = new SSound(pAudioEngine);
@@ -77,7 +77,7 @@ void AudioCore::addTracks(const std::vector<std::wstring> &vFiles)
             vAudioTracks.pop_back();
 
             pMainWindow->showMessageBox(L"Error", L"An error occurred at AudioCore::addTracks(): could not open the file \""
-                                        + vFiles[i] + L"\", skipping this file.", true);
+                                        + vFiles[i] + L"\", skipping this file.", true, false);
         }
     }
 }
@@ -110,6 +110,13 @@ void AudioCore::removeTrack(const std::wstring &sAudioTitle)
     {
         if (vAudioTracks[i]->sAudioTitle == sAudioTitle)
         {
+            if (bLoadedTrackAtLeastOneTime && currentTrackState != CTS_DELETED && vPlayedHistory.back()->sAudioTitle == sAudioTitle)
+            {
+                // Playing right now.
+                pCurrentTrack->stopSound();
+            }
+
+
             for (size_t j = 0; j < vPlayedHistory.size();)
             {
                 // Remove from history.
@@ -142,6 +149,56 @@ void AudioCore::removeTrack(const std::wstring &sAudioTitle)
 
 
             currentTrackState = CTS_DELETED;
+
+            break;
+        }
+    }
+}
+
+void AudioCore::moveUp(const std::wstring &sAudioTitle)
+{
+    std::lock_guard<std::mutex> lock(mtxProcess);
+
+    for (size_t i = 0; i < vAudioTracks.size(); i++)
+    {
+        if (vAudioTracks[i]->sAudioTitle == sAudioTitle)
+        {
+            XAudioFile* pAudio = vAudioTracks[i];
+            vAudioTracks.erase(vAudioTracks.begin() + i);
+
+            if (i == 0)
+            {
+                vAudioTracks.push_back(pAudio);
+            }
+            else
+            {
+                vAudioTracks.insert(vAudioTracks.begin() + i - 1, pAudio);
+            }
+
+            break;
+        }
+    }
+}
+
+void AudioCore::moveDown(const std::wstring &sAudioTitle)
+{
+    std::lock_guard<std::mutex> lock(mtxProcess);
+
+    for (size_t i = 0; i < vAudioTracks.size(); i++)
+    {
+        if (vAudioTracks[i]->sAudioTitle == sAudioTitle)
+        {
+            XAudioFile* pAudio = vAudioTracks[i];
+            vAudioTracks.erase(vAudioTracks.begin() + i);
+
+            if (i == vAudioTracks.size())
+            {
+                vAudioTracks.insert(vAudioTracks.begin(), pAudio);
+            }
+            else
+            {
+                vAudioTracks.insert(vAudioTracks.begin() + i + 1, pAudio);
+            }
 
             break;
         }
@@ -301,7 +358,7 @@ void AudioCore::prevTrack()
                 mtxProcess.unlock();
 
                 pMainWindow->showMessageBox(L"Error", L"An error occurred at AudioCore::prevTrack(): "
-                                                      "could not find XAudioFile.", true);
+                                                      "could not find XAudioFile.", true, false);
             }
         }
         else
@@ -338,6 +395,8 @@ void AudioCore::nextTrack(bool bCalledFromOtherThread)
                 if (vAudioTracks[i] == vPlayedHistory.back())
                 {
                     iCurrentIndex = i;
+
+                    break;
                 }
             }
 
@@ -382,6 +441,8 @@ void AudioCore::nextTrack(bool bCalledFromOtherThread)
                 if (vAudioTracks[i] == vPlayedHistory.back())
                 {
                     iCurrentIndex = i;
+
+                    break;
                 }
             }
 

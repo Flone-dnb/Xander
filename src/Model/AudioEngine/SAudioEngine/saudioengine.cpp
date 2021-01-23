@@ -22,10 +22,14 @@ SAudioEngine::SAudioEngine(MainWindow* pMainWindow)
     pMasteringVoice = nullptr;
 
     bEngineInitialized = false;
+
+    bEnableLowLatency = true;
 }
 
-bool SAudioEngine::init()
+bool SAudioEngine::init(bool bEnableLowLatency)
 {
+    this->bEnableLowLatency = bEnableLowLatency;
+
     bEngineInitialized = false;
 
     if (initXAudio2())
@@ -179,15 +183,18 @@ bool SAudioEngine::initSourceReaderConfig(IMFAttributes*& pSourceReaderConfig)
         return true;
     }
 
-    // Enables low-latency processing
-    // "Low latency is defined as the smallest possible delay from when the media data is generated (or received) to when it is rendered.
-    // Low latency is desirable for real-time communication scenarios.
-    // For other scenarios, such as local playback or transcoding, you typically should not enable low-latency mode, because it can affect quality."
-    hr = pSourceReaderConfig->SetUINT32(MF_LOW_LATENCY, true);
-    if (FAILED(hr))
+    if (bEnableLowLatency)
     {
-        showError(hr, L"AudioEngine::initSourceReaderConfig::MFCreateAttributes()");
-        return true;
+        // Enables low-latency processing
+        // "Low latency is defined as the smallest possible delay from when the media data is generated (or received) to when it is rendered.
+        // Low latency is desirable for real-time communication scenarios.
+        // For other scenarios, such as local playback or transcoding, you typically should not enable low-latency mode, because it can affect quality."
+        hr = pSourceReaderConfig->SetUINT32(MF_LOW_LATENCY, true);
+        if (FAILED(hr))
+        {
+            showError(hr, L"AudioEngine::initSourceReaderConfig::MFCreateAttributes()");
+            return true;
+        }
     }
 
 
@@ -203,17 +210,17 @@ void SAudioEngine::showError(HRESULT hr, const std::wstring &sPathToFunc)
 
     if (errorText != NULL)
     {
-        pMainWindow->showMessageBox(L"Error", L"An error occurred at " + sPathToFunc + L": " + std::wstring(errorText), true);
+        pMainWindow->showMessageBox(L"Error", L"An error occurred at " + sPathToFunc + L": " + std::wstring(errorText), true, true);
 
         LocalFree(errorText);
     }
     else
     {
-        pMainWindow->showMessageBox(L"Error", L"An unknown error occurred at " + sPathToFunc + L".", true);
+        pMainWindow->showMessageBox(L"Error", L"An unknown error occurred at " + sPathToFunc + L".", true, true);
     }
 }
 
 void SAudioEngine::showError(const std::wstring& sPathToFunc, const std::wstring& sErrorText)
 {
-    pMainWindow->showMessageBox(L"Error", L"An error occurred at " + sPathToFunc + L": " + sErrorText, true);
+    pMainWindow->showMessageBox(L"Error", L"An error occurred at " + sPathToFunc + L": " + sErrorText, true, true);
 }

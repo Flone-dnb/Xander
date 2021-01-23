@@ -220,7 +220,7 @@ public:
 
     SAudioEngine(MainWindow* pMainWindow);
 
-    bool init();
+    bool init(bool bEnableLowLatency = true);
 
 
     // Will be auto deleted in ~SAudioEngine().
@@ -262,6 +262,7 @@ private:
 
 
     bool bEngineInitialized;
+    bool bEnableLowLatency;
 };
 
 

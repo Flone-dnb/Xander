@@ -100,6 +100,10 @@ void MainWindow::addTrackWidget(const std::wstring &sTrackTitle, std::promise<Tr
     ui->verticalLayout_tracks->addWidget(pTrackWidget);
     ui->scrollArea_tracklist->verticalScrollBar()->setSliderPosition(ui->scrollArea_tracklist->verticalScrollBar()->maximum());
 
+    connect(pTrackWidget, &TrackWidget::signalMoveUp, this, &MainWindow::slotMoveUp);
+    connect(pTrackWidget, &TrackWidget::signalMoveDown, this, &MainWindow::slotMoveDown);
+    connect(pTrackWidget, &TrackWidget::signalDelete, this, &MainWindow::slotDeleteSelectedTrack);
+
     pPromiseCreateWidget->set_value(pTrackWidget);
 }
 
@@ -115,22 +119,25 @@ void MainWindow::removeTrackWidget(TrackWidget *pTrackWidget, std::promise<bool>
     if (pTrackWidget == pPlayingTrack)
     {
         pPlayingTrack = nullptr;
+        ui->label_track_name->setText("");
+        ui->label_track_info->setText("");
     }
 
-    delete pTrackWidget;
+    //delete pTrackWidget; // 'delete' below is causing a crash if the context menu is opened on TrackWidget
+    pTrackWidget->deleteLater();
 
     pPromiseRemoveWidget->set_value(false);
 }
 
-void MainWindow::showMessageBox(std::wstring sMessageTitle, std::wstring sMessageText, bool bErrorMessage)
+void MainWindow::showMessageBox(std::wstring sMessageTitle, std::wstring sMessageText, bool bErrorMessage, bool bSendSignal)
 {
-    if (bErrorMessage)
+    if (bSendSignal)
     {
-        QMessageBox::warning(this, QString::fromStdWString(sMessageTitle), QString::fromStdWString(sMessageText));
+       emit signalShowMessageBox(QString::fromStdWString(sMessageTitle), QString::fromStdWString(sMessageText), bErrorMessage);
     }
     else
     {
-        QMessageBox::information(this, QString::fromStdWString(sMessageTitle), QString::fromStdWString(sMessageText));
+        slotShowMessageBox(QString::fromStdWString(sMessageTitle), QString::fromStdWString(sMessageText), bErrorMessage);
     }
 }
 
@@ -408,6 +415,94 @@ void MainWindow::slotSearchTextSet(QString keyword)
     pController->searchTextSet (keyword.toStdWString());
 }
 
+void MainWindow::slotMoveUp()
+{
+    std::lock_guard<std::mutex> lock(mtxUIStateChange);
+
+    if (pSelectedTrack == nullptr)
+    {
+        return;
+    }
+
+    pController->moveUp(pSelectedTrack->getTrackTitle().toStdWString());
+
+
+    int iTrackIndex = ui->verticalLayout_tracks->indexOf(pSelectedTrack);
+    QLayoutItem* pItem = ui->verticalLayout_tracks->takeAt(iTrackIndex);
+
+    if (iTrackIndex == 0)
+    {
+        ui->verticalLayout_tracks->addItem(pItem);
+    }
+    else
+    {
+        ui->verticalLayout_tracks->insertItem(iTrackIndex - 1, pItem);
+    }
+
+
+    // Deselect track widget.
+
+    if (pSelectedTrack == pPlayingTrack)
+    {
+        pSelectedTrack->setPlaying();
+    }
+    else
+    {
+        pSelectedTrack->setIdle();
+    }
+
+    pSelectedTrack = nullptr;
+}
+
+void MainWindow::slotMoveDown()
+{
+    std::lock_guard<std::mutex> lock(mtxUIStateChange);
+
+    if (pSelectedTrack == nullptr)
+    {
+        return;
+    }
+
+    pController->moveDown(pSelectedTrack->getTrackTitle().toStdWString());
+
+
+    int iTrackIndex = ui->verticalLayout_tracks->indexOf(pSelectedTrack);
+    QLayoutItem* pItem = ui->verticalLayout_tracks->takeAt(iTrackIndex);
+
+    if (iTrackIndex == ui->verticalLayout_tracks->count())
+    {
+        ui->verticalLayout_tracks->insertItem(0, pItem);
+    }
+    else
+    {
+        ui->verticalLayout_tracks->insertItem(iTrackIndex + 1, pItem);
+    }
+
+
+    // Deselect track widget.
+
+    if (pSelectedTrack == pPlayingTrack)
+    {
+        pSelectedTrack->setPlaying();
+    }
+    else
+    {
+        pSelectedTrack->setIdle();
+    }
+
+    pSelectedTrack = nullptr;
+}
+
+void MainWindow::slotDeleteSelectedTrack()
+{
+    if (pSelectedTrack == nullptr)
+    {
+        return;
+    }
+
+    pController->removeTrack(pSelectedTrack->getTrackTitle().toStdWString());
+}
+
 void MainWindow::slotSetNewPlayingTrack(TrackWidget *pTrackWidget, std::promise<bool>* pPromiseFinish)
 {
     if (pTrackWidget == pSelectedTrack)
@@ -461,6 +556,18 @@ void MainWindow::slotChangePlayButtonStyle(bool bChangeStyleToPause, std::promis
     if (pPromiseFinish)
     {
         pPromiseFinish->set_value(false);
+    }
+}
+
+void MainWindow::slotShowMessageBox(QString sMessageTitle, QString sMessageText, bool bErrorMessage)
+{
+    if (bErrorMessage)
+    {
+        QMessageBox::warning(this, sMessageTitle, sMessageText);
+    }
+    else
+    {
+        QMessageBox::information(this, sMessageTitle, sMessageText);
     }
 }
 

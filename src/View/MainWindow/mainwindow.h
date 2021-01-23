@@ -36,6 +36,8 @@ signals:
 
     void signalSearchMatchCount      (size_t iCount);
 
+    void signalShowMessageBox        (QString sMessageTitle, QString sMessageText, bool bErrorMessage);
+
 public:
 
     MainWindow(QWidget *parent = nullptr);
@@ -61,7 +63,7 @@ public:
     void searchSetSelected        (TrackWidget* pTrackWidget);
 
 
-    void showMessageBox           (std::wstring sMessageTitle, std::wstring sMessageText, bool bErrorMessage);
+    void showMessageBox           (std::wstring sMessageTitle, std::wstring sMessageText, bool bErrorMessage, bool bSendSignal);
 
 
 protected:
@@ -80,11 +82,17 @@ public slots:
     void  slotSearchFindNext  ();
     void  slotSearchTextSet   (QString keyword);
 
+    // Context menu on TrackWidget
+    void  slotMoveUp          ();
+    void  slotMoveDown        ();
+    void  slotDeleteSelectedTrack ();
+
 private slots:
 
     // This to this.
     void  slotSetNewPlayingTrack          (TrackWidget* pTrackWidget, std::promise<bool>* pPromiseFinish);
     void  slotChangePlayButtonStyle       (bool bChangeStyleToPause, std::promise<bool>* pPromiseFinish);
+    void  slotShowMessageBox              (QString sMessageTitle, QString sMessageText, bool bErrorMessage);
 
     // Tray icon.
     void  slotTrayIconActivated           ();
