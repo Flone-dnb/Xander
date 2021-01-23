@@ -90,6 +90,7 @@ private slots:
     void  on_actionAbout_triggered        ();
     void  on_actionOpen_File_triggered    ();
     void  on_actionOpen_Folder_triggered  ();
+    void  on_actionAbout_Qt_triggered     ();
 
 private:
 

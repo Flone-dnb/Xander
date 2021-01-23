@@ -21,6 +21,7 @@
 #include "Model/globals.h"
 #include "View/AboutWindow/aboutwindow.h"
 #include "View/TrackWidget/trackwidget.h"
+#include "View/AboutQtWindow/aboutqtwindow.h"
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -466,6 +467,14 @@ void MainWindow::on_pushButton_random_clicked()
 void MainWindow::on_pushButton_next_track_clicked()
 {
     pController->nextTrack();
+}
+
+void MainWindow::on_actionAbout_Qt_triggered()
+{
+    AboutQtWindow* pAboutQtWindow = new AboutQtWindow(this);
+    pAboutQtWindow->setWindowModality(Qt::WindowModality::WindowModal);
+
+    pAboutQtWindow->show();
 }
 
 MainWindow::~MainWindow()
