@@ -21,6 +21,7 @@
 class MainWindow;
 class SAudioEngine;
 class SSound;
+class SSoundMix;
 
 enum CURRENT_TRACK_STATE
 {
@@ -64,6 +65,11 @@ public:
     void setVolume   (int iVolume);
 
 
+    CurrentEffects* getCurrentEffects();
+    void setPitch        (float fPitch);
+    void setReverbVolume (float fVolume);
+
+
     void saveTracklist   (const std::wstring& sPathToFile);
     void openTracklist   (const std::wstring& sPathToFile, bool bClearCurrentTracklist);
 
@@ -83,16 +89,23 @@ private:
 
     size_t findCaseInsensitive(std::wstring sText, std::wstring sKeyword);
 
+    void applyAudioEffects();
+
 
     MainWindow*   pMainWindow;
     SAudioEngine* pAudioEngine;
     SSound*       pCurrentTrack;
+    SSoundMix*    pMix;
 
     std::mt19937_64*  pRndGen;
 
 
     std::vector<XAudioFile*> vAudioTracks;
     std::vector<XAudioFile*> vPlayedHistory;
+
+
+    CurrentEffects      effects;
+
 
     // Search
     std::vector<size_t> vSearchResult;

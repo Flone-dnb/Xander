@@ -24,11 +24,6 @@
 class SAudioEngine;
 class SSoundMix;
 
-struct SSamplePack
-{
-    std::vector<int16_t> vChannels;
-};
-
 enum SSoundState
 {
     SS_NOT_PLAYING = 0,
@@ -68,15 +63,8 @@ public:
     bool setPositionInSec (double dPositionInSec);
 
 
-    // Effects
-    // will reset all previous effects, pass empty vector to clear effects
-    bool setAudioEffects      (std::vector<SAudioEffect> vEffects);
-    bool setEnableAudioEffect (unsigned int iEffectIndex, bool bEnable);
-    bool setAudioEffectParameters  (unsigned int iEffectIndex, SAudioEffect& params);
-
-
     bool setVolume        (float fVolume);
-    // [-32, 32] so [-5, 5] octaves
+    // [0.03125, 32] so [-5, 5] octaves
     bool setPitchInFreqRatio(float fRatio);
     // [-5, 5] octaves so [-60, 60]
     bool setPitchInSemitones(float fSemitones);

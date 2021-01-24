@@ -90,11 +90,18 @@ bool SSound::loadAudioFile(const std::wstring &sAudioFilePath, bool bStreamAudio
 
         if (pSoundMix)
         {
-            XAUDIO2_SEND_DESCRIPTOR d;
-            d.Flags = 0;
-            d.pOutputVoice = pSoundMix->pSubmixVoice;
+            XAUDIO2_SEND_DESCRIPTOR d1;
+            d1.Flags = 0;
+            d1.pOutputVoice = pSoundMix->pSubmixVoice;
 
-            sendTo = {1, &d};
+            XAUDIO2_SEND_DESCRIPTOR d2;
+            d2.Flags = 0;
+            d2.pOutputVoice = pSoundMix->pSubmixVoiceFX;
+
+            XAUDIO2_SEND_DESCRIPTOR desc[2] = {d1, d2};
+
+            sendTo.SendCount = 2;
+            sendTo.pSends = desc;
         }
         else
         {
@@ -135,11 +142,18 @@ bool SSound::loadAudioFile(const std::wstring &sAudioFilePath, bool bStreamAudio
 
         if (pSoundMix)
         {
-            XAUDIO2_SEND_DESCRIPTOR d;
-            d.Flags = 0;
-            d.pOutputVoice = pSoundMix->pSubmixVoice;
+            XAUDIO2_SEND_DESCRIPTOR d1;
+            d1.Flags = 0;
+            d1.pOutputVoice = pSoundMix->pSubmixVoice;
 
-            sendTo = {1, &d};
+            XAUDIO2_SEND_DESCRIPTOR d2;
+            d2.Flags = 0;
+            d2.pOutputVoice = pSoundMix->pSubmixVoiceFX;
+
+            XAUDIO2_SEND_DESCRIPTOR desc[2] = {d1, d2};
+
+            sendTo.SendCount = 2;
+            sendTo.pSends = desc;
         }
         else
         {
@@ -166,208 +180,6 @@ bool SSound::loadAudioFile(const std::wstring &sAudioFilePath, bool bStreamAudio
 
 
     soundState = SS_NOT_PLAYING;
-
-    return false;
-}
-
-bool SSound::setAudioEffects(std::vector<SAudioEffect> vEffects)
-{
-    if (bSoundLoaded == false)
-    {
-        pAudioEngine->showError(L"Sound::setAudioEffects()", L"no sound is loaded.");
-        return true;
-    }
-
-    if (bEffectsSet)
-    {
-        // remove prev chain
-        HRESULT hr = pSourceVoice->SetEffectChain(NULL);
-        if (FAILED(hr))
-        {
-            pAudioEngine->showError(hr, L"SSound::setAudioEffects::SetEffectChain() [reset]");
-            return true;
-        }
-
-        if (vEffects.size() == 0)
-        {
-            bEffectsSet = false;
-            return false;
-        }
-    }
-
-
-    std::vector<IUnknown*> vXAPO(vEffects.size());
-    HRESULT hr = S_OK;
-
-    for (size_t i = 0; i < vEffects.size(); i++)
-    {
-        hr = S_OK;
-
-        switch(vEffects[i].effectType)
-        {
-        case(ET_REVERB):
-        {
-            hr = CreateFX(__uuidof(FXReverb), &vXAPO[i]);
-            break;
-        }
-        case(ET_EQ):
-        {
-            hr = CreateFX(__uuidof(FXEQ), &vXAPO[i]);
-            break;
-        }
-        case(ET_ECHO):
-        {
-            hr = CreateFX(__uuidof(FXEcho), &vXAPO[i]);
-            break;
-        }
-        }
-
-        if (FAILED(hr))
-        {
-            pAudioEngine->showError(hr, L"SSound::setAudioEffects::CreateFX()");
-            return true;
-        }
-    }
-
-
-    std::vector<XAUDIO2_EFFECT_DESCRIPTOR> vDescriptors(vXAPO.size());
-
-    for (size_t i = 0; i < vXAPO.size(); i++)
-    {
-        vDescriptors[i].InitialState = vEffects[i].isEnabled();
-        vDescriptors[i].OutputChannels = soundInfo.iChannels;
-        vDescriptors[i].pEffect = vXAPO[i];
-    }
-
-    XAUDIO2_EFFECT_CHAIN chain;
-    chain.EffectCount = vXAPO.size();
-    chain.pEffectDescriptors = &vDescriptors[0];
-
-    hr = pSourceVoice->SetEffectChain(&chain);
-    if (FAILED(hr))
-    {
-        pAudioEngine->showError(hr, L"SSound::setAudioEffects::SetEffectChain()");
-        return true;
-    }
-
-
-    for (size_t i = 0; i < vXAPO.size(); i++)
-    {
-        // Releasing the client's reference to the XAPO allows XAudio2 to take ownership of the XAPO.
-        vXAPO[i]->Release();
-    }
-
-
-    for (size_t i = 0; i < vEffects.size(); i++)
-    {
-        switch(vEffects[i].effectType)
-        {
-        case(ET_REVERB):
-        {
-            hr = pSourceVoice->SetEffectParameters(i, &vEffects[i].reverbParams, sizeof( FXREVERB_PARAMETERS ), XAUDIO2_COMMIT_NOW);
-            break;
-        }
-        case(ET_EQ):
-        {
-            hr = pSourceVoice->SetEffectParameters(i, &vEffects[i].eqParams, sizeof( FXEQ_PARAMETERS ), XAUDIO2_COMMIT_NOW);
-            break;
-        }
-        case(ET_ECHO):
-        {
-            hr = pSourceVoice->SetEffectParameters(i, &vEffects[i].echoParams, sizeof( FXECHO_PARAMETERS ), XAUDIO2_COMMIT_NOW);
-            break;
-        }
-        }
-
-        if (FAILED(hr))
-        {
-            pAudioEngine->showError(hr, L"SSound::setAudioEffects::SetEffectParameters()");
-            return true;
-        }
-    }
-
-
-    bEffectsSet = true;
-
-    return false;
-}
-
-bool SSound::setEnableAudioEffect(unsigned int iEffectIndex, bool bEnable)
-{
-    if (bSoundLoaded == false)
-    {
-        pAudioEngine->showError(L"Sound::setEnableAudioEffect()", L"no sound is loaded.");
-        return true;
-    }
-
-    if (bEffectsSet == false)
-    {
-        pAudioEngine->showError(L"Sound::setEnableAudioEffect()", L"no effects added, use setAudioEffects() first.");
-        return true;
-    }
-
-    if (bEnable)
-    {
-        HRESULT hr = pSourceVoice->EnableEffect(iEffectIndex);
-        if (FAILED(hr))
-        {
-            pAudioEngine->showError(hr, L"SSound::setEnableAudioEffect::EnableEffect()");
-            return true;
-        }
-    }
-    else
-    {
-        HRESULT hr = pSourceVoice->DisableEffect(iEffectIndex);
-        if (FAILED(hr))
-        {
-            pAudioEngine->showError(hr, L"SSound::setEnableAudioEffect::DisableEffect()");
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool SSound::setAudioEffectParameters(unsigned int iEffectIndex, SAudioEffect& params)
-{
-    if (bSoundLoaded == false)
-    {
-        pAudioEngine->showError(L"Sound::setAudioEffectParameters()", L"no sound is loaded.");
-        return true;
-    }
-
-    if (bEffectsSet == false)
-    {
-        pAudioEngine->showError(L"Sound::setAudioEffectParameters()", L"no effects added, use setAudioEffects() first.");
-        return true;
-    }
-
-    HRESULT hr = S_OK;
-
-    switch(params.effectType)
-    {
-    case(ET_REVERB):
-    {
-        hr = pSourceVoice->SetEffectParameters(iEffectIndex, &params.reverbParams, sizeof( FXREVERB_PARAMETERS ), XAUDIO2_COMMIT_NOW);
-        break;
-    }
-    case(ET_EQ):
-    {
-        hr = pSourceVoice->SetEffectParameters(iEffectIndex, &params.eqParams, sizeof( FXEQ_PARAMETERS ), XAUDIO2_COMMIT_NOW);
-        break;
-    }
-    case(ET_ECHO):
-    {
-        hr = pSourceVoice->SetEffectParameters(iEffectIndex, &params.echoParams, sizeof( FXECHO_PARAMETERS ), XAUDIO2_COMMIT_NOW);
-        break;
-    }
-    }
-
-    if (FAILED(hr))
-    {
-        pAudioEngine->showError(hr, L"SSound::setAudioEffectParameters::SetEffectParameters()");
-        return true;
-    }
 
     return false;
 }
@@ -713,9 +525,9 @@ bool SSound::setPitchInFreqRatio(float fRatio)
     {
         fRatio = 32.0f;
     }
-    else if (fRatio < -32.0f)
+    else if (fRatio < 0.03125f)
     {
-        fRatio = -32.0f;
+        fRatio = 0.03125f;
     }
 
     HRESULT hr = pSourceVoice->SetFrequencyRatio(fRatio);
@@ -836,6 +648,7 @@ bool SSound::setPan(float fPan)
 
 
     hr = pSourceVoice->SetOutputMatrix(pSoundMix ? pSoundMix->pSubmixVoice : NULL, voiceDetails.InputChannels, sendVoiceDetails.InputChannels, outputMatrix);
+    hr = pSourceVoice->SetOutputMatrix(pSoundMix ? pSoundMix->pSubmixVoiceFX : NULL, voiceDetails.InputChannels, sendVoiceDetails.InputChannels, outputMatrix);
 
     if (FAILED(hr))
     {

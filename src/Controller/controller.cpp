@@ -90,6 +90,21 @@ void Controller::setVolume(int iVolume)
     pAudioCore->setVolume(iVolume);
 }
 
+CurrentEffects *Controller::getCurrentEffects()
+{
+    return pAudioCore->getCurrentEffects();
+}
+
+void Controller::setPitch(float fPitch)
+{
+    pAudioCore->setPitch(fPitch);
+}
+
+void Controller::setReverbVolume(float fVolume)
+{
+    pAudioCore->setReverbVolume(fVolume);
+}
+
 void Controller::saveTracklist(const std::wstring &sPathToFile)
 {
     pAudioCore->saveTracklist(sPathToFile);

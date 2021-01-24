@@ -48,6 +48,11 @@ public:
     void setVolume   (int iVolume);
 
 
+    class CurrentEffects* getCurrentEffects();
+    void setPitch       (float fPitch);
+    void setReverbVolume(float fVolume);
+
+
     void saveTracklist  (const std::wstring& sPathToFile);
     void openTracklist  (const std::wstring& sPathToFile, bool bClearCurrentTracklist);
 

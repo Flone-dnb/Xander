@@ -20,6 +20,7 @@ public:
 
 
     bool setVolume(float fVolume);
+    bool setFXVolume(float fFXVolume);
 
 
     // Effects
@@ -30,6 +31,7 @@ public:
 
 
     void getVolume(float& fVolume);
+    void getFXVolume(float& fFXVolume);
 
 
 
@@ -46,8 +48,15 @@ private:
 
 
     class IXAudio2SubmixVoice* pSubmixVoice;
+    class IXAudio2SubmixVoice* pSubmixVoiceFX;
 
     SAudioEngine* pAudioEngine;
+
+
+    std::vector<bool> vEnabledEffects;
+
+
+    float fFXVolume = 1.0f;
 
 
     bool bMonoOutput;

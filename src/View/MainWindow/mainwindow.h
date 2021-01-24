@@ -107,6 +107,7 @@ private slots:
     void  on_pushButton_repeat_clicked    ();
     void  on_pushButton_random_clicked    ();
     void  on_pushButton_next_track_clicked();
+    void  on_pushButton_fx_clicked        ();
 
     // Volume slider.
     void  on_horizontalSlider_volume_valueChanged (int value);
@@ -123,8 +124,9 @@ private:
 
     friend class TrackList;
     friend class TrackWidget;
+    friend class FXWindow;
 
-    void applyStyle               ();
+    void applyStyle ();
 
 
     Ui::MainWindow * ui;

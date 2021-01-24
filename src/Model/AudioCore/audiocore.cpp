@@ -16,6 +16,7 @@
 #include "View/MainWindow/mainwindow.h"
 #include "Model/AudioEngine/SAudioEngine/saudioengine.h"
 #include "Model/AudioEngine/SSound/ssound.h"
+#include "Model/AudioEngine/SSoundMix/ssoundmix.h"
 
 namespace fs = std::filesystem;
 
@@ -29,6 +30,48 @@ AudioCore::AudioCore(MainWindow* pMainWindow)
     pAudioEngine = new SAudioEngine(pMainWindow);
     pAudioEngine->init(false);
     pAudioEngine->setMasterVolume(DEFAULT_VOLUME / 100.0f);
+
+    pAudioEngine->createSoundMix(pMix);
+
+    // Add eq.
+    std::vector<SAudioEffect> vEffects;
+
+
+    SAudioEffect eq(pAudioEngine, S_EFFECT_TYPE::ET_EQ, true);
+    FXEQ_PARAMETERS eqparams;
+
+    eqparams.FrequencyCenter0 = FXEQ_DEFAULT_FREQUENCY_CENTER_0;
+    eqparams.Gain0 = 0.8f;
+    eqparams.Bandwidth0 = FXEQ_DEFAULT_BANDWIDTH;
+    eqparams.FrequencyCenter1 = FXEQ_DEFAULT_FREQUENCY_CENTER_1;
+    eqparams.Gain1 = 2.5f;
+    eqparams.Bandwidth1 = FXEQ_DEFAULT_BANDWIDTH;
+    eqparams.FrequencyCenter2 = FXEQ_DEFAULT_FREQUENCY_CENTER_2;
+    eqparams.Gain2 = 0.3f;
+    eqparams.Bandwidth2 = FXEQ_DEFAULT_BANDWIDTH;
+    eqparams.FrequencyCenter3 = FXEQ_DEFAULT_FREQUENCY_CENTER_3;
+    eqparams.Gain3 = 0.8f;
+    eqparams.Bandwidth3 = FXEQ_DEFAULT_BANDWIDTH;
+
+    eq.setEQParameters(eqparams);
+
+    vEffects.push_back(eq);
+
+    // Add reverb.
+    SAudioEffect reverb(pAudioEngine, S_EFFECT_TYPE::ET_REVERB, true);
+    FXREVERB_PARAMETERS params;
+    params.RoomSize = FXREVERB_MAX_ROOMSIZE;
+    params.Diffusion = FXREVERB_MAX_DIFFUSION;
+
+    reverb.setReverbParameters(params);
+    vEffects.push_back(reverb);
+
+    // Set disabled.
+    pMix->setFXVolume(0.0f);
+    pMix->setAudioEffects(&vEffects);
+
+
+
 
     pCurrentTrack = new SSound(pAudioEngine);
 
@@ -115,6 +158,8 @@ void AudioCore::removeTrack(const std::wstring &sAudioTitle)
             {
                 // Playing right now.
                 pCurrentTrack->stopSound();
+
+                currentTrackState = CTS_DELETED;
             }
 
 
@@ -147,9 +192,6 @@ void AudioCore::removeTrack(const std::wstring &sAudioTitle)
 
 
             vAudioTracks.erase(vAudioTracks.begin() + i);
-
-
-            currentTrackState = CTS_DELETED;
 
             break;
         }
@@ -214,10 +256,13 @@ void AudioCore::playTrack(const std::wstring &sTrackTitle, bool bCalledFromOther
     {
         if (vAudioTracks[i]->sAudioTitle == sTrackTitle)
         {
-            if (pCurrentTrack->loadAudioFile(vAudioTracks[i]->sPathToAudioFile, true))
+            if (pCurrentTrack->loadAudioFile(vAudioTracks[i]->sPathToAudioFile, true, pMix))
             {
                 return;
             }
+
+            applyAudioEffects();
+
 
             if (pCurrentTrack->playSound())
             {
@@ -534,6 +579,33 @@ void AudioCore::setVolume(int iVolume)
     pAudioEngine->setMasterVolume(iVolume / 100.0f);
 }
 
+CurrentEffects *AudioCore::getCurrentEffects()
+{
+    return &effects;
+}
+
+void AudioCore::setPitch(float fPitch)
+{
+    effects.fPitchInSemitones = fPitch;
+
+    if (bLoadedTrackAtLeastOneTime && currentTrackState != CTS_DELETED)
+    {
+        std::lock_guard<std::mutex> lock(mtxProcess);
+        applyAudioEffects();
+    }
+}
+
+void AudioCore::setReverbVolume(float fVolume)
+{
+    effects.fReverbVolume = fVolume;
+
+    if (bLoadedTrackAtLeastOneTime && currentTrackState != CTS_DELETED)
+    {
+        std::lock_guard<std::mutex> lock(mtxProcess);
+        applyAudioEffects();
+    }
+}
+
 void AudioCore::saveTracklist(const std::wstring &sPathToFile)
 {
     std::lock_guard<std::mutex> lock(mtxProcess);
@@ -836,6 +908,12 @@ size_t AudioCore::findCaseInsensitive(std::wstring sText, std::wstring sKeyword)
     std::transform(sKeyword.begin(), sKeyword.end(), sKeyword.begin(), ::tolower);
 
     return sText.find(sKeyword);
+}
+
+void AudioCore::applyAudioEffects()
+{
+    pCurrentTrack->setPitchInSemitones(effects.fPitchInSemitones);
+    pMix->setFXVolume(effects.fReverbVolume);
 }
 
 AudioCore::~AudioCore()

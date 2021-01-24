@@ -15,6 +15,7 @@ SSoundMix::SSoundMix(SAudioEngine* pAudioEngine)
     this->pAudioEngine = pAudioEngine;
 
     pSubmixVoice = nullptr;
+    pSubmixVoiceFX = nullptr;
 
     bEffectsSet = false;
 }
@@ -29,6 +30,15 @@ bool SSoundMix::init(bool bMonoOutput)
         pAudioEngine->showError(hr, L"SSoundMix::init::CreateSubmixVoice()");
         return true;
     }
+
+    hr = pAudioEngine->pXAudio2Engine->CreateSubmixVoice(&pSubmixVoiceFX, bMonoOutput ? 1 : 2, 44100, 0, 0, 0, 0);
+    if (FAILED(hr))
+    {
+        pAudioEngine->showError(hr, L"SSoundMix::init::CreateSubmixVoice() [fx]");
+        return true;
+    }
+
+    pSubmixVoiceFX->SetVolume(0.0f);
 
     return false;
 }
@@ -46,17 +56,36 @@ bool SSoundMix::setVolume(float fVolume)
     return false;
 }
 
+bool SSoundMix::setFXVolume(float fFXVolume)
+{
+    this->fFXVolume = fFXVolume;
+
+    if (bEffectsSet)
+    {
+        HRESULT hr = pSubmixVoiceFX->SetVolume(fFXVolume);
+        if (FAILED(hr))
+        {
+            pAudioEngine->showError(hr, L"SSoundMix::setFXVolume::SetVolume()");
+            return true;
+        }
+    }
+}
+
 bool SSoundMix::setAudioEffects(std::vector<SAudioEffect> *pvEffects)
 {
     if (bEffectsSet)
     {
         // remove prev chain
-        HRESULT hr = pSubmixVoice->SetEffectChain(NULL);
+        HRESULT hr = pSubmixVoiceFX->SetEffectChain(NULL);
         if (FAILED(hr))
         {
             pAudioEngine->showError(hr, L"SSoundMix::setAudioEffects::SetEffectChain() [reset]");
             return true;
         }
+
+        pSubmixVoiceFX->SetVolume(0.0f);
+
+        vEnabledEffects.clear();
 
         if (pvEffects->size() == 0)
         {
@@ -68,6 +97,8 @@ bool SSoundMix::setAudioEffects(std::vector<SAudioEffect> *pvEffects)
 
     std::vector<IUnknown*> vXAPO(pvEffects->size());
     HRESULT hr = S_OK;
+
+    bool bEnableSound = false;
 
     for (size_t i = 0; i < pvEffects->size(); i++)
     {
@@ -92,11 +123,23 @@ bool SSoundMix::setAudioEffects(std::vector<SAudioEffect> *pvEffects)
         }
         }
 
+        if (pvEffects->operator[](i).bEnable && bEnableSound == false)
+        {
+            bEnableSound = true;
+        }
+
+        vEnabledEffects.push_back(pvEffects->operator[](i).bEnable);
+
         if (FAILED(hr))
         {
             pAudioEngine->showError(hr, L"SSoundMix::setAudioEffects::CreateFX()");
             return true;
         }
+    }
+
+    if (bEnableSound)
+    {
+        pSubmixVoiceFX->SetVolume(fFXVolume);
     }
 
 
@@ -113,7 +156,7 @@ bool SSoundMix::setAudioEffects(std::vector<SAudioEffect> *pvEffects)
     chain.EffectCount = vXAPO.size();
     chain.pEffectDescriptors = &vDescriptors[0];
 
-    hr = pSubmixVoice->SetEffectChain(&chain);
+    hr = pSubmixVoiceFX->SetEffectChain(&chain);
     if (FAILED(hr))
     {
         pAudioEngine->showError(hr, L"SSoundMix::setAudioEffects::SetEffectChain()");
@@ -134,17 +177,17 @@ bool SSoundMix::setAudioEffects(std::vector<SAudioEffect> *pvEffects)
         {
         case(ET_REVERB):
         {
-            hr = pSubmixVoice->SetEffectParameters(i, &pvEffects->operator[](i).reverbParams, sizeof( FXREVERB_PARAMETERS ), XAUDIO2_COMMIT_NOW);
+            hr = pSubmixVoiceFX->SetEffectParameters(i, &pvEffects->operator[](i).reverbParams, sizeof( FXREVERB_PARAMETERS ), XAUDIO2_COMMIT_NOW);
             break;
         }
         case(ET_EQ):
         {
-            hr = pSubmixVoice->SetEffectParameters(i, &pvEffects->operator[](i).eqParams, sizeof( FXEQ_PARAMETERS ), XAUDIO2_COMMIT_NOW);
+            hr = pSubmixVoiceFX->SetEffectParameters(i, &pvEffects->operator[](i).eqParams, sizeof( FXEQ_PARAMETERS ), XAUDIO2_COMMIT_NOW);
             break;
         }
         case(ET_ECHO):
         {
-            hr = pSubmixVoice->SetEffectParameters(i, &pvEffects->operator[](i).echoParams, sizeof( FXECHO_PARAMETERS ), XAUDIO2_COMMIT_NOW);
+            hr = pSubmixVoiceFX->SetEffectParameters(i, &pvEffects->operator[](i).echoParams, sizeof( FXECHO_PARAMETERS ), XAUDIO2_COMMIT_NOW);
             break;
         }
         }
@@ -172,7 +215,7 @@ bool SSoundMix::setEnableAudioEffect(unsigned int iEffectIndex, bool bEnable)
 
     if (bEnable)
     {
-        HRESULT hr = pSubmixVoice->EnableEffect(iEffectIndex);
+        HRESULT hr = pSubmixVoiceFX->EnableEffect(iEffectIndex);
         if (FAILED(hr))
         {
             pAudioEngine->showError(hr, L"SSoundMix::setEnableAudioEffect::EnableEffect()");
@@ -181,11 +224,23 @@ bool SSoundMix::setEnableAudioEffect(unsigned int iEffectIndex, bool bEnable)
     }
     else
     {
-        HRESULT hr = pSubmixVoice->DisableEffect(iEffectIndex);
+        HRESULT hr = pSubmixVoiceFX->DisableEffect(iEffectIndex);
         if (FAILED(hr))
         {
             pAudioEngine->showError(hr, L"SSoundMix::setEnableAudioEffect::DisableEffect()");
             return true;
+        }
+    }
+
+    vEnabledEffects[iEffectIndex] = bEnable;
+
+    for (size_t i = 0; i < vEnabledEffects.size(); i++)
+    {
+        if (vEnabledEffects[i])
+        {
+            pSubmixVoiceFX->SetVolume(1.0f);
+
+            break;
         }
     }
 
@@ -206,17 +261,17 @@ bool SSoundMix::setAudioEffectParameters(unsigned int iEffectIndex, SAudioEffect
     {
     case(ET_REVERB):
     {
-        hr = pSubmixVoice->SetEffectParameters(iEffectIndex, &params->reverbParams, sizeof( FXREVERB_PARAMETERS ), XAUDIO2_COMMIT_NOW);
+        hr = pSubmixVoiceFX->SetEffectParameters(iEffectIndex, &params->reverbParams, sizeof( FXREVERB_PARAMETERS ), XAUDIO2_COMMIT_NOW);
         break;
     }
     case(ET_EQ):
     {
-        hr = pSubmixVoice->SetEffectParameters(iEffectIndex, &params->eqParams, sizeof( FXEQ_PARAMETERS ), XAUDIO2_COMMIT_NOW);
+        hr = pSubmixVoiceFX->SetEffectParameters(iEffectIndex, &params->eqParams, sizeof( FXEQ_PARAMETERS ), XAUDIO2_COMMIT_NOW);
         break;
     }
     case(ET_ECHO):
     {
-        hr = pSubmixVoice->SetEffectParameters(iEffectIndex, &params->echoParams, sizeof( FXECHO_PARAMETERS ), XAUDIO2_COMMIT_NOW);
+        hr = pSubmixVoiceFX->SetEffectParameters(iEffectIndex, &params->echoParams, sizeof( FXECHO_PARAMETERS ), XAUDIO2_COMMIT_NOW);
         break;
     }
     }
@@ -235,10 +290,20 @@ void SSoundMix::getVolume(float &fVolume)
     pSubmixVoice->GetVolume(&fVolume);
 }
 
+void SSoundMix::getFXVolume(float &fFXVolume)
+{
+    fFXVolume = this->fFXVolume;
+}
+
 SSoundMix::~SSoundMix()
 {
     if (pSubmixVoice)
     {
         pSubmixVoice->DestroyVoice();
+    }
+
+    if (pSubmixVoiceFX)
+    {
+        pSubmixVoiceFX->DestroyVoice();
     }
 }

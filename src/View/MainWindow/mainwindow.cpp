@@ -24,6 +24,7 @@
 #include "View/TrackWidget/trackwidget.h"
 #include "View/AboutQtWindow/aboutqtwindow.h"
 #include "View/SearchWindow/searchwindow.h"
+#include "View/FXWindow/fxwindow.h"
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -679,6 +680,14 @@ void MainWindow::on_actionOpen_Tracklist_triggered()
             pController->openTracklist(file.toStdWString(), false);
         }
     }
+}
+
+void MainWindow::on_pushButton_fx_clicked()
+{
+    FXWindow* pFXWindow = new FXWindow(this, this);
+    pFXWindow->setWindowModality(Qt::WindowModality::WindowModal);
+
+    pFXWindow->show();
 }
 
 MainWindow::~MainWindow()

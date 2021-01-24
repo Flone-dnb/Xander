@@ -23,6 +23,12 @@ struct XAudioFile
     class TrackWidget* pTrackWidget = nullptr;
 };
 
+struct CurrentEffects
+{
+    float fPitchInSemitones = 0.0f;
+    float fReverbVolume = 0.0f;
+};
+
 #define XANDER_VERSION "1.0.0"
 
 #define RES_LOGO_PATH ":/logo.png"
