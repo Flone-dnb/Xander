@@ -33,10 +33,10 @@ signals:
     // This to this.
     void signalSetNewPlayingTrack    (TrackWidget* pTrackWidget, std::promise<bool>* pPromiseFinish);
     void signalChangePlayButtonStyle (bool bChangeStyleToPause, std::promise<bool>* pPromiseFinish);
+    void signalShowMessageBox        (QString sMessageTitle, QString sMessageText, bool bErrorMessage);
+    void signalSetTrackInfo          (QString sTrackTitle, QString sTrackInfo, std::promise<bool>* pPromiseFinish);
 
     void signalSearchMatchCount      (size_t iCount);
-
-    void signalShowMessageBox        (QString sMessageTitle, QString sMessageText, bool bErrorMessage);
 
 public:
 
@@ -57,6 +57,7 @@ public:
 
 
     void setNewPlayingTrack       (TrackWidget* pTrackWidget, bool bSendSignal);
+    void setTrackInfo             (const std::wstring& sTrackTitle, const std::wstring& sTrackInfo);
 
 
     void setSearchMatchCount      (size_t iMatches);
@@ -93,6 +94,7 @@ private slots:
     void  slotSetNewPlayingTrack          (TrackWidget* pTrackWidget, std::promise<bool>* pPromiseFinish);
     void  slotChangePlayButtonStyle       (bool bChangeStyleToPause, std::promise<bool>* pPromiseFinish);
     void  slotShowMessageBox              (QString sMessageTitle, QString sMessageText, bool bErrorMessage);
+    void  slotSetTrackInfo                (QString sTrackTitle, QString sTrackInfo, std::promise<bool>* pPromiseFinish);
 
     // Tray icon.
     void  slotTrayIconActivated           ();

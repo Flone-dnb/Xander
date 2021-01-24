@@ -44,6 +44,8 @@ MainWindow::MainWindow(QWidget *parent)
     // This to this.
     connect(this, &MainWindow::signalSetNewPlayingTrack, this, &MainWindow::slotSetNewPlayingTrack);
     connect(this, &MainWindow::signalChangePlayButtonStyle, this, &MainWindow::slotChangePlayButtonStyle);
+    connect(this, &MainWindow::signalSetTrackInfo, this, &MainWindow::slotSetTrackInfo);
+    connect(this, &MainWindow::signalShowMessageBox, this, &MainWindow::slotShowMessageBox);
 }
 
 void MainWindow::onExecCalled()
@@ -268,6 +270,19 @@ void MainWindow::setNewPlayingTrack(TrackWidget *pTrackWidget, bool bSendSignal)
     {
         slotSetNewPlayingTrack(pTrackWidget, nullptr);
     }
+}
+
+void MainWindow::setTrackInfo(const std::wstring &sTrackTitle, const std::wstring &sTrackInfo)
+{
+    std::lock_guard<std::mutex> lock(mtxUIStateChange);
+
+    std::promise<bool> promiseFinish;
+
+    std::future<bool> f = promiseFinish.get_future();
+
+    emit signalSetTrackInfo(QString::fromStdWString(sTrackTitle), QString::fromStdWString(sTrackInfo), &promiseFinish);
+
+    f.get();
 }
 
 void MainWindow::setSearchMatchCount(size_t iMatches)
@@ -569,6 +584,14 @@ void MainWindow::slotShowMessageBox(QString sMessageTitle, QString sMessageText,
     {
         QMessageBox::information(this, sMessageTitle, sMessageText);
     }
+}
+
+void MainWindow::slotSetTrackInfo(QString sTrackTitle, QString sTrackInfo, std::promise<bool>* pPromiseFinish)
+{
+    ui->label_track_name->setText(sTrackTitle);
+    ui->label_track_info->setText(sTrackInfo);
+
+    pPromiseFinish->set_value(false);
 }
 
 void MainWindow::on_pushButton_play_clicked()

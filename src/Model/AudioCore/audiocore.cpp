@@ -58,6 +58,7 @@ void AudioCore::addTracks(const std::vector<std::wstring> &vFiles)
         {
             vAudioTracks.back()->sPathToAudioFile = vFiles[i];
             vAudioTracks.back()->sAudioTitle = getTrackTitle(vFiles[i]);
+            vAudioTracks.back()->sTrackExtension = getTrackExtension(vFiles[i]);
 
 
 
@@ -218,7 +219,10 @@ void AudioCore::playTrack(const std::wstring &sTrackTitle, bool bCalledFromOther
                 return;
             }
 
-            pCurrentTrack->playSound();
+            if (pCurrentTrack->playSound())
+            {
+                return;
+            }
 
             bLoadedTrackAtLeastOneTime = true;
             currentTrackState = CTS_PLAYING;
@@ -245,6 +249,12 @@ void AudioCore::playTrack(const std::wstring &sTrackTitle, bool bCalledFromOther
             {
                 vPlayedHistory.push_back(vAudioTracks[i]);
             }
+
+
+            // Show track on screen.
+
+            pMainWindow->setTrackInfo(vAudioTracks[i]->sAudioTitle, getTrackInfo(vAudioTracks[i]));
+
 
             break;
         }
@@ -632,6 +642,79 @@ std::wstring AudioCore::getTrackTitle(const std::wstring &sAudioPath)
     std::wstring sTrackTitle = sAudioPath.substr(iTitleStartIndex, iLastDotPos - iTitleStartIndex);
 
     return sTrackTitle;
+}
+
+std::wstring AudioCore::getTrackExtension(const std::wstring &sTrackPath)
+{
+    size_t iLastDotPos = 0;
+
+    for (size_t i = sTrackPath.size() - 1; i >= 1; i--)
+    {
+        if (sTrackPath[i] == L'.')
+        {
+            iLastDotPos = i;
+
+            break;
+        }
+    }
+
+    std::wstring sTrackExtension = sTrackPath.substr(iLastDotPos + 1, sTrackPath.size() - (iLastDotPos + 1));
+
+    return sTrackExtension;
+}
+
+std::wstring AudioCore::getTrackInfo(XAudioFile *pTrack)
+{
+    std::wstring sTrackInfo = L"";
+
+    // Extension first.
+    sTrackInfo += pTrack->sTrackExtension;
+
+
+    if (pCurrentTrack == nullptr)
+    {
+        return L"";
+    }
+
+    SSoundInfo info;
+    pCurrentTrack->getSoundInfo(info);
+
+
+    // Sample rate
+    if (info.iSampleRate != 0)
+    {
+        sTrackInfo += L", ";
+        sTrackInfo += std::to_wstring(info.iSampleRate) + L" hz";
+    }
+
+    // Channels
+    sTrackInfo += L", ";
+    sTrackInfo += L"channels: " + std::to_wstring(info.iChannels);
+
+    // Bits per sample
+    sTrackInfo += L", ";
+    sTrackInfo += std::to_wstring(info.iBitsPerSample) + L" bits";
+
+    // Bitrate
+    if (info.iBitrate != 0)
+    {
+        sTrackInfo += L", ";
+        sTrackInfo += std::to_wstring(info.iBitrate / 1000) + L" kbit/s";
+    }
+
+    // VBR
+    if (info.bUsesVariableBitRate)
+    {
+        sTrackInfo += L", vbr";
+    }
+
+    // File size.
+    sTrackInfo += L", ";
+    float fFileSizeInMB = info.iFileSizeInBytes / 1024.0f / 1024.0f;
+    size_t iPrecision = 2;
+    sTrackInfo += std::to_wstring(fFileSizeInMB).substr(0, std::to_wstring(fFileSizeInMB).find(L".") + iPrecision + 1) + L" MB";
+
+    return sTrackInfo;
 }
 
 void AudioCore::removeTrack(XAudioFile *pAudio)

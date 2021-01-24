@@ -71,6 +71,8 @@ public:
 private:
 
     std::wstring getTrackTitle(const std::wstring& sAudioPath);
+    std::wstring getTrackExtension(const std::wstring& sTrackPath);
+    std::wstring  getTrackInfo (XAudioFile* pTrack);
 
     void removeTrack(XAudioFile* pAudio);
     void onCurrentTrackEnded(SSound* pTrack);

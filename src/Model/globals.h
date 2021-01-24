@@ -18,6 +18,8 @@ struct XAudioFile
     std::wstring sPathToAudioFile;
     std::ifstream* pOpenedStream;
 
+    std::wstring sTrackExtension;
+
     class TrackWidget* pTrackWidget = nullptr;
 };
 
