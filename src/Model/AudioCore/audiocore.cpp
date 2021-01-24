@@ -534,6 +534,85 @@ void AudioCore::setVolume(int iVolume)
     pAudioEngine->setMasterVolume(iVolume / 100.0f);
 }
 
+void AudioCore::saveTracklist(const std::wstring &sPathToFile)
+{
+    std::lock_guard<std::mutex> lock(mtxProcess);
+
+    if (vAudioTracks.size() == 0)
+    {
+        pMainWindow->showMessageBox(L"Information", L"The tracklist is empty, there is nothing to save.", false, false);
+
+        return;
+    }
+
+    std::ofstream file(sPathToFile, std::ios::binary);
+
+
+    unsigned int iTrackCount = static_cast<unsigned int>(vAudioTracks.size());
+    file.write(reinterpret_cast<char*>(&iTrackCount), sizeof(iTrackCount));
+
+    for (unsigned int i = 0; i < iTrackCount; i++)
+    {
+        unsigned short iPathSize = static_cast<unsigned short>(vAudioTracks[i]->sPathToAudioFile.size());
+        file.write(reinterpret_cast<char*>(&iPathSize), sizeof(iPathSize));
+
+        file.write(reinterpret_cast<char*>(const_cast<wchar_t*>(vAudioTracks[i]->sPathToAudioFile.c_str())), iPathSize * sizeof(wchar_t));
+    }
+
+
+    file.close();
+}
+
+void AudioCore::openTracklist(const std::wstring &sPathToFile, bool bClearCurrentTracklist)
+{
+    if (bClearCurrentTracklist)
+    {
+        clearTracklist();
+    }
+
+
+    mtxProcess.lock();
+
+
+    std::ifstream file(sPathToFile, std::ios::binary);
+
+    if (file.is_open() == false)
+    {
+        pMainWindow->showMessageBox(L"Error", L"Could not open the tracklist file.", true, false);
+
+        mtxProcess.unlock();
+        return;
+    }
+
+
+    unsigned int iTrackCount = 0;
+    file.read(reinterpret_cast<char*>(&iTrackCount), sizeof(iTrackCount));
+
+    std::vector<std::wstring> vFilePaths;
+
+    for (unsigned int i = 0; i < iTrackCount; i++)
+    {
+        unsigned short iPathSize = 0;
+        file.read(reinterpret_cast<char*>(&iPathSize), sizeof(iPathSize));
+
+        wchar_t* pPathString = new wchar_t[iPathSize + 1];
+        memset(pPathString, 0, (iPathSize + 1) * sizeof(wchar_t));
+
+        file.read(reinterpret_cast<char*>(pPathString), iPathSize * sizeof(wchar_t));
+
+        vFilePaths.push_back(pPathString);
+
+        delete[] pPathString;
+    }
+
+
+    file.close();
+
+
+    mtxProcess.unlock();
+    addTracks(vFilePaths);
+}
+
 void AudioCore::searchFindPrev()
 {
     std::lock_guard<std::mutex> lock(mtxProcess);

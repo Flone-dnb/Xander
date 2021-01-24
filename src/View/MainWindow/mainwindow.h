@@ -116,6 +116,8 @@ private slots:
     void  on_actionOpen_File_triggered    ();
     void  on_actionOpen_Folder_triggered  ();
     void  on_actionAbout_Qt_triggered     ();
+    void  on_actionSave_Tracklist_triggered();
+    void  on_actionOpen_Tracklist_triggered();
 
 private:
 

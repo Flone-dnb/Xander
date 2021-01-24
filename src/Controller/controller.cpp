@@ -90,6 +90,16 @@ void Controller::setVolume(int iVolume)
     pAudioCore->setVolume(iVolume);
 }
 
+void Controller::saveTracklist(const std::wstring &sPathToFile)
+{
+    pAudioCore->saveTracklist(sPathToFile);
+}
+
+void Controller::openTracklist(const std::wstring &sPathToFile, bool bClearCurrentTracklist)
+{
+    pAudioCore->openTracklist(sPathToFile, bClearCurrentTracklist);
+}
+
 void Controller::searchFindPrev()
 {
     pAudioCore->searchFindPrev();

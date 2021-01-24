@@ -652,6 +652,35 @@ void MainWindow::on_actionAbout_Qt_triggered()
     pAboutQtWindow->show();
 }
 
+void MainWindow::on_actionSave_Tracklist_triggered()
+{
+    QString file = QFileDialog::getSaveFileName(nullptr, "Save Tracklist", "", "Xander Tracklist (*.xtl)");
+
+    if (file != "")
+    {
+        pController->saveTracklist(file.toStdWString());
+    }
+}
+
+void MainWindow::on_actionOpen_Tracklist_triggered()
+{
+    QString file = QFileDialog::getOpenFileName(nullptr, "Open Tracklist", "", "Xander Tracklist (*.xtl)");
+    if (file != "")
+    {
+        QMessageBox::StandardButton answer = QMessageBox::question(nullptr, "Open Tracklist",
+                                             "Do you want to clear the current tracklist? "
+                                             "\nSelect \"No\" if you want to add tracks from the new tracklist to the current one.");
+        if (answer == QMessageBox::StandardButton::Yes)
+        {
+            pController->openTracklist(file.toStdWString(), true);
+        }
+        else
+        {
+            pController->openTracklist(file.toStdWString(), false);
+        }
+    }
+}
+
 MainWindow::~MainWindow()
 {
     delete pController;
