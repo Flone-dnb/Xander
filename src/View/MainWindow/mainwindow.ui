@@ -334,6 +334,26 @@
       <property name="frameShadow">
        <enum>QFrame::Raised</enum>
       </property>
+      <layout class="QVBoxLayout" name="verticalLayout_5">
+       <property name="spacing">
+        <number>5</number>
+       </property>
+       <property name="leftMargin">
+        <number>2</number>
+       </property>
+       <property name="topMargin">
+        <number>2</number>
+       </property>
+       <property name="rightMargin">
+        <number>2</number>
+       </property>
+       <property name="bottomMargin">
+        <number>2</number>
+       </property>
+       <item>
+        <widget class="QCustomPlot" name="widget_graph" native="true"/>
+       </item>
+      </layout>
      </widget>
     </item>
     <item>
@@ -499,6 +519,12 @@
    <class>TrackList</class>
    <extends>QScrollArea</extends>
    <header>View/TrackList/tracklist.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QCustomPlot</class>
+   <extends>QWidget</extends>
+   <header>../ext/qcustomplot/qcustomplot.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -19,6 +19,7 @@ SSound::SSound(SAudioEngine* pAudioEngine)
     this->pAudioEngine = pAudioEngine;
 
     pAsyncSourceReader = nullptr;
+    pOptionalSourceReader = nullptr;
 
     pSourceVoice = nullptr;
 
@@ -29,7 +30,8 @@ SSound::SSound(SAudioEngine* pAudioEngine)
 
     sAudioFileDiskPath = L"";
 
-    iCurrentSamplePosition = 0;
+    dCurrentStreamingPosInSec = 0.0;
+    iSamplesPlayedOnLastSetPos = 0;
 
     bCalledOnPlayEnd = false;
     bDestroyCalled = false;
@@ -68,6 +70,8 @@ bool SSound::loadAudioFile(const std::wstring &sAudioFilePath, bool bStreamAudio
     IMFAttributes* pConfig = nullptr;
     pAudioEngine->initSourceReaderConfig(pConfig);
     pSourceReaderConfig = pConfig;
+    pAudioEngine->initSourceReaderConfig(pConfig);
+    pOptionalSourceReaderConfig = pConfig;
 
 
     WAVEFORMATEX* waveFormatEx;
@@ -173,6 +177,14 @@ bool SSound::loadAudioFile(const std::wstring &sAudioFilePath, bool bStreamAudio
         }
     }
 
+
+    // Create source reader for readWaveData().
+    WAVEFORMATEX* pWaveFormat;
+    unsigned int iWaveSize;
+    createSourceReader(sAudioFilePath, nullptr, pOptionalSourceReader, &pWaveFormat, iWaveSize, true);
+    CoTaskMemFree(pWaveFormat);
+
+
     this->sAudioFileDiskPath = sAudioFilePath;
 
     bSoundLoaded = true;
@@ -208,7 +220,8 @@ bool SSound::playSound()
     bSoundStoppedManually = false;
     bCurrentlyStreaming = false;
 
-    iCurrentSamplePosition = 0;
+    dCurrentStreamingPosInSec = 0.0;
+    iSamplesPlayedOnLastSetPos = 0;
 
 
     if (onPlayEndCallback)
@@ -265,14 +278,6 @@ bool SSound::pauseSound()
     if (soundState == SS_PAUSED || soundState == SS_NOT_PLAYING)
     {
         return false;
-    }
-
-    if (bUseStreaming == false)
-    {
-        XAUDIO2_VOICE_STATE state;
-        pSourceVoice->GetState(&state);
-
-        iCurrentSamplePosition = state.SamplesPlayed;
     }
 
     mtxSoundState.lock();
@@ -372,7 +377,7 @@ bool SSound::stopSound()
         }
     }
 
-    iCurrentSamplePosition = 0;
+    dCurrentStreamingPosInSec = 0.0;
 
 
     pSourceVoice->FlushSourceBuffers();
@@ -430,10 +435,7 @@ bool SSound::setPositionInSec(double dPositionInSec)
         HRESULT hr = InitPropVariantFromInt64(pos, &var);
         if (SUCCEEDED(hr))
         {
-            double dPercent = dPositionInSec / soundInfo.dSoundLengthInSec;
-            size_t iSampleCount = static_cast<size_t>(soundInfo.dSoundLengthInSec * soundInfo.iSampleRate);
-
-            iCurrentSamplePosition = static_cast<unsigned long long>(dPercent * iSampleCount);
+            //dCurrentStreamingPosInSec = dPositionInSec;
 
             hr = pAsyncSourceReader->SetCurrentPosition(GUID_NULL, var);
             PropVariantClear(&var);
@@ -460,12 +462,14 @@ bool SSound::setPositionInSec(double dPositionInSec)
             return true;
         }
 
+        XAUDIO2_VOICE_STATE state;
+        pSourceVoice->GetState(&state);
 
-        size_t iSampleCount = vAudioData.size() / ((soundInfo.iBitsPerSample / 8) * soundInfo.iChannels);
+        iSamplesPlayedOnLastSetPos = state.SamplesPlayed;
+
+
+        size_t iSampleCount = static_cast<size_t>(soundInfo.iSampleRate * soundInfo.dSoundLengthInSec);
         double dPercent = dPositionInSec / soundInfo.dSoundLengthInSec;
-
-        iCurrentSamplePosition = static_cast<unsigned long long>(dPercent * iSampleCount);
-
 
         audioBuffer.PlayBegin = static_cast<UINT32>(dPercent * iSampleCount);
 
@@ -711,19 +715,25 @@ bool SSound::getPositionInSec(double &dPositionInSec)
 
     if (bUseStreaming)
     {
-        size_t iSampleCount = static_cast<size_t>(soundInfo.dSoundLengthInSec * soundInfo.iSampleRate);
-
-        double dPercent = iCurrentSamplePosition / static_cast<double>(iSampleCount);
-
-        dPositionInSec = dPercent * soundInfo.dSoundLengthInSec;
+        dPositionInSec = dCurrentStreamingPosInSec;
     }
     else
     {
         XAUDIO2_VOICE_STATE state;
         pSourceVoice->GetState(&state);
 
-        size_t iSampleCount = vAudioData.size() / ((soundInfo.iBitsPerSample / 8) * soundInfo.iChannels);
-        double dPercent = (state.SamplesPlayed + audioBuffer.PlayBegin) / static_cast<double>(iSampleCount);
+        size_t iSampleCount = static_cast<size_t>(soundInfo.iSampleRate * soundInfo.dSoundLengthInSec);
+
+        double dPercent = 0.0;
+
+        if (audioBuffer.PlayBegin != 0)
+        {
+            dPercent = (state.SamplesPlayed - iSamplesPlayedOnLastSetPos + audioBuffer.PlayBegin) / static_cast<double>(iSampleCount);
+        }
+        else
+        {
+            dPercent = (state.SamplesPlayed + audioBuffer.PlayBegin) / static_cast<double>(iSampleCount);
+        }
 
         dPositionInSec = dPercent * soundInfo.dSoundLengthInSec;
     }
@@ -759,6 +769,91 @@ bool SSound::isSoundStoppedManually() const
     return bSoundStoppedManually;
 }
 
+bool SSound::readWaveData(std::vector<unsigned char>* pvWaveData, bool& bEndOfStream)
+{
+    std::lock_guard<std::mutex> lock(mtxOptionalSourceReaderRead);
+
+    if (pOptionalSourceReader == nullptr)
+    {
+        return true;
+    }
+
+
+    Microsoft::WRL::ComPtr<IMFSample> pSample = nullptr;
+    Microsoft::WRL::ComPtr<IMFMediaBuffer> pBuffer = nullptr;
+    unsigned char* pLocalAudioData = nullptr;
+    DWORD iLocalAudioDataLength = 0;
+
+
+    // Audio stream index.
+    DWORD iStreamIndex = (DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM;
+    HRESULT hr = S_OK;
+
+
+    DWORD flags = 0;
+    hr = pOptionalSourceReader->ReadSample(iStreamIndex, 0, nullptr, &flags, nullptr, pSample.GetAddressOf());
+    if (FAILED(hr))
+    {
+        pAudioEngine->showError(hr, L"AudioEngine::readWaveData::ReadSample()");
+        return true;
+    }
+
+    // Check for eof.
+    if (flags & MF_SOURCE_READERF_ENDOFSTREAM)
+    {
+        // Restart the stream.
+        PROPVARIANT var = { 0 };
+        var.vt = VT_I8;
+
+        HRESULT hr = pOptionalSourceReader->SetCurrentPosition(GUID_NULL, var);
+        if (FAILED(hr))
+        {
+            pAudioEngine->showError(hr, L"Sound::readWaveData::SetCurrentPosition()");
+            return true;
+        }
+
+        bEndOfStream = true;
+
+        return false;
+    }
+
+
+
+    // Convert data to contiguous buffer.
+    hr = pSample->ConvertToContiguousBuffer(pBuffer.GetAddressOf());
+    if (FAILED(hr))
+    {
+        pAudioEngine->showError(hr, L"AudioEngine::readWaveData::ConvertToContiguousBuffer()");
+        return true;
+    }
+
+    // Lock buffer and copy data to local memory.
+    hr = pBuffer->Lock(&pLocalAudioData, nullptr, &iLocalAudioDataLength);
+    if (FAILED(hr))
+    {
+        pAudioEngine->showError(hr, L"AudioEngine::readWaveData::Lock()");
+        return true;
+    }
+
+    for (size_t i = 0; i < iLocalAudioDataLength; i++)
+    {
+        pvWaveData->push_back(pLocalAudioData[i]);
+    }
+
+    // Unlock the buffer.
+    hr = pBuffer->Unlock();
+    pLocalAudioData = nullptr;
+
+    if (FAILED(hr))
+    {
+        pAudioEngine->showError(hr, L"AudioEngine::readWaveData::Unlock()");
+        return true;
+    }
+
+
+    return false;
+}
+
 void SSound::clearSound()
 {
     if (bSoundLoaded)
@@ -781,6 +876,14 @@ void SSound::clearSound()
             pAsyncSourceReader->Release();
             pAsyncSourceReader = nullptr;
         }
+
+        mtxOptionalSourceReaderRead.lock();
+        if (pOptionalSourceReader)
+        {
+            pOptionalSourceReader->Release();
+            pOptionalSourceReader = nullptr;
+        }
+        mtxOptionalSourceReaderRead.unlock();
     }
 }
 
@@ -1096,10 +1199,6 @@ bool SSound::loopStream(IMFSourceReader *pAsyncReader, IXAudio2SourceVoice *pSou
 
     DWORD iCurrentStreamBufferIndex = 0;
 
-    size_t iSizeOfSample = (soundInfo.iBitsPerSample / 8) * soundInfo.iChannels;
-    iLastReadSampleSize = 0;
-    bool bSkippedFirstRead = false;
-
     while(true)
     {
         if (bStopStreaming)
@@ -1123,6 +1222,8 @@ bool SSound::loopStream(IMFSourceReader *pAsyncReader, IXAudio2SourceVoice *pSou
         }
 
         WaitForSingleObject(sourceReaderCallback.hReadSampleEvent, INFINITE);
+
+        dCurrentStreamingPosInSec = sourceReaderCallback.llTimestamp / 10000000;
 
         if (sourceReaderCallback.bIsEndOfStream)
         {
@@ -1181,18 +1282,6 @@ bool SSound::loopStream(IMFSourceReader *pAsyncReader, IXAudio2SourceVoice *pSou
             vSizeOfBuffers[iCurrentStreamBufferIndex] = iSampleBufferSize;
         }
 
-        if (bSkippedFirstRead == false)
-        {
-            bSkippedFirstRead = true;
-        }
-
-        if (bSkippedFirstRead)
-        {
-            iCurrentSamplePosition += iLastReadSampleSize / iSizeOfSample;
-        }
-
-        iLastReadSampleSize = vSizeOfBuffers[iCurrentStreamBufferIndex];
-
 
 
         // Copy data to our buffer.
@@ -1249,7 +1338,8 @@ bool SSound::loopStream(IMFSourceReader *pAsyncReader, IXAudio2SourceVoice *pSou
     return false;
 }
 
-bool SSound::createSourceReader(const std::wstring &sAudioFilePath, SourceReaderCallback** pAsyncSourceReaderCallback, IMFSourceReader *& pOutSourceReader, WAVEFORMATEX **pFormat, unsigned int &iWaveFormatSize)
+bool SSound::createSourceReader(const std::wstring &sAudioFilePath, SourceReaderCallback** pAsyncSourceReaderCallback,
+                                IMFSourceReader *& pOutSourceReader, WAVEFORMATEX **pFormat, unsigned int &iWaveFormatSize, bool bOptional)
 {
     HRESULT hr = S_OK;
 
@@ -1264,11 +1354,23 @@ bool SSound::createSourceReader(const std::wstring &sAudioFilePath, SourceReader
         }
     }
 
-    hr = MFCreateSourceReaderFromURL(sAudioFilePath.c_str(), pSourceReaderConfig.Get(), &pOutSourceReader);
-    if (FAILED(hr))
+    if (bOptional)
     {
-        pAudioEngine->showError(hr, L"AudioEngine::createSourceReader::MFCreateSourceReaderFromURL()");
-        return true;
+        hr = MFCreateSourceReaderFromURL(sAudioFilePath.c_str(), pOptionalSourceReaderConfig.Get(), &pOutSourceReader);
+        if (FAILED(hr))
+        {
+            pAudioEngine->showError(hr, L"AudioEngine::createSourceReader::MFCreateSourceReaderFromURL()");
+            return true;
+        }
+    }
+    else
+    {
+        hr = MFCreateSourceReaderFromURL(sAudioFilePath.c_str(), pSourceReaderConfig.Get(), &pOutSourceReader);
+        if (FAILED(hr))
+        {
+            pAudioEngine->showError(hr, L"AudioEngine::createSourceReader::MFCreateSourceReaderFromURL()");
+            return true;
+        }
     }
 
 

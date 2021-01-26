@@ -101,6 +101,7 @@ public:
             bIsEndOfStream = TRUE;
         }
         this->hrStatus = hrStatus;
+        this->llTimestamp = llTimestamp;
 
 
         SetEvent(hReadSampleEvent);
@@ -144,6 +145,7 @@ private:
     }
 
 public:
+    LONGLONG            llTimestamp;
     std::mutex			guard;
     HANDLE              hReadSampleEvent;
     BOOL                bIsEndOfStream;

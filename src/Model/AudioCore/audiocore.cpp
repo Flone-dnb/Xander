@@ -8,7 +8,6 @@
 #include "audiocore.h"
 
 // STL
-#include <future>
 #include <filesystem>
 #include <functional>
 
@@ -47,10 +46,10 @@ AudioCore::AudioCore(MainWindow* pMainWindow)
     eqparams.Gain1 = 2.5f;
     eqparams.Bandwidth1 = FXEQ_DEFAULT_BANDWIDTH;
     eqparams.FrequencyCenter2 = FXEQ_DEFAULT_FREQUENCY_CENTER_2;
-    eqparams.Gain2 = 0.3f;
+    eqparams.Gain2 = 0.5f;
     eqparams.Bandwidth2 = FXEQ_DEFAULT_BANDWIDTH;
     eqparams.FrequencyCenter3 = FXEQ_DEFAULT_FREQUENCY_CENTER_3;
-    eqparams.Gain3 = 0.8f;
+    eqparams.Gain3 = 1.0f;
     eqparams.Bandwidth3 = FXEQ_DEFAULT_BANDWIDTH;
 
     eq.setEQParameters(eqparams);
@@ -82,6 +81,9 @@ AudioCore::AudioCore(MainWindow* pMainWindow)
     bLoadedTrackAtLeastOneTime = false;
     bRandomTrack = false;
     bRepeatTrack = false;
+    bDrawingGraph = false;
+    bDestroyCalled = false;
+    bMonitorRunning = false;
 
     currentTrackState = CTS_DELETED;
 }
@@ -159,6 +161,9 @@ void AudioCore::removeTrack(const std::wstring &sAudioTitle)
                 // Playing right now.
                 pCurrentTrack->stopSound();
 
+                waitForGraphToStop();
+                pMainWindow->clearGraph();
+
                 currentTrackState = CTS_DELETED;
             }
 
@@ -195,6 +200,22 @@ void AudioCore::removeTrack(const std::wstring &sAudioTitle)
 
             break;
         }
+    }
+}
+
+void AudioCore::setTrackPos(double x)
+{
+    std::lock_guard<std::mutex> lock(mtxProcess);
+
+    if (bLoadedTrackAtLeastOneTime && currentTrackState != CTS_DELETED)
+    {
+        SSoundInfo info;
+        pCurrentTrack->getSoundInfo(info);
+
+        double dPercent = x / pMainWindow->getMaxXPosOnGraph();
+        double dResultPosInSec = dPercent * info.dSoundLengthInSec;
+
+        pCurrentTrack->setPositionInSec(dResultPosInSec);
     }
 }
 
@@ -252,6 +273,17 @@ void AudioCore::playTrack(const std::wstring &sTrackTitle, bool bCalledFromOther
 {
     std::lock_guard<std::mutex> lock(mtxProcess);
 
+
+    if (bMonitorRunning == false)
+    {
+        std::thread t (&AudioCore::monitorTrackPosition, this);
+        t.detach();
+    }
+
+
+    waitForGraphToStop();
+
+
     for (size_t i = 0; i < vAudioTracks.size(); i++)
     {
         if (vAudioTracks[i]->sAudioTitle == sTrackTitle)
@@ -278,6 +310,8 @@ void AudioCore::playTrack(const std::wstring &sTrackTitle, bool bCalledFromOther
 
             // Add to history.
 
+            bool bNewTrack = false;
+
             if (vPlayedHistory.size() > 0)
             {
                 if (vPlayedHistory.back() != vAudioTracks[i])
@@ -288,17 +322,33 @@ void AudioCore::playTrack(const std::wstring &sTrackTitle, bool bCalledFromOther
                     }
 
                     vPlayedHistory.push_back(vAudioTracks[i]);
+
+                    bNewTrack = true;
                 }
             }
             else
             {
                 vPlayedHistory.push_back(vAudioTracks[i]);
+
+                bNewTrack = true;
             }
 
 
             // Show track on screen.
 
             pMainWindow->setTrackInfo(vAudioTracks[i]->sAudioTitle, getTrackInfo(vAudioTracks[i]));
+
+
+
+            if (bNewTrack)
+            {
+                // New track: start drawing graph.
+
+                promiseFinishDrawGraph = std::promise<bool>();
+
+                std::thread t (&AudioCore::drawGraph, this);
+                t.detach();
+            }
 
 
             break;
@@ -367,6 +417,8 @@ void AudioCore::stopTrack(bool bCalledFromOtherThread)
         currentTrackState = CTS_STOPPED;
 
         pMainWindow->changePlayButtonStyle(false, bCalledFromOtherThread);
+
+        pMainWindow->setCurrentPos(0.0, "");
     }
 }
 
@@ -439,6 +491,16 @@ void AudioCore::nextTrack(bool bCalledFromOtherThread)
 
     if (bLoadedTrackAtLeastOneTime && currentTrackState != CTS_DELETED)
     {
+        if (vAudioTracks.size() == 1)
+        {
+            mtxProcess.unlock();
+
+            stopTrack(bCalledFromOtherThread);
+            playTrack(bCalledFromOtherThread);
+
+            return;
+        }
+
         if (bRandomTrack)
         {
             size_t iNextTrackIndex = 0;
@@ -572,6 +634,11 @@ void AudioCore::clearTracklist()
     currentTrackState = CTS_DELETED;
 
     pMainWindow->changePlayButtonStyle(false, false);
+
+
+
+    waitForGraphToStop();
+    pMainWindow->clearGraph();
 }
 
 void AudioCore::setVolume(int iVolume)
@@ -910,17 +977,374 @@ size_t AudioCore::findCaseInsensitive(std::wstring sText, std::wstring sKeyword)
     return sText.find(sKeyword);
 }
 
+void AudioCore::drawGraph()
+{
+    SSoundInfo info;
+    pCurrentTrack->getSoundInfo(info);
+
+    if (info.iBitsPerSample != 16 && info.iBitsPerSample != 24 && info.iBitsPerSample != 32)
+    {
+        pMainWindow->showMessageBox(L"Error", L"An error occurred at AudioCore::drawGraph(): unsupported sample format, "
+                                              "the sample size is " + std::to_wstring(info.iBitsPerSample) + L" bits.", true, true);
+        return;
+    }
+
+
+    mtxDrawGraph.lock();
+
+    bDrawingGraph = true;
+
+    mtxDrawGraph.unlock();
+
+
+    pMainWindow->clearGraph();
+
+
+
+
+
+    unsigned int iDivideSampleCount = 100;
+    // so we calculate 'iSamplesInOne' like this:
+    // 3000 (samples in 1 graph sample) - 6000 (sec.)
+    // x    (samples in 1 graph sample) - track length (in sec.)
+    iDivideSampleCount = static_cast<unsigned int>(3000 * info.dSoundLengthInSec / 6000);
+
+
+    unsigned int iSampleCount = static_cast<unsigned int>(info.dSoundLengthInSec * info.iSampleRate);
+    iSampleCount /= iDivideSampleCount; // approximate amount (will be corrected later)
+
+    pMainWindow->setMaxXToGraph(iSampleCount);
+
+
+
+    bool bReachedEOF = true;
+    bool bEOF = false;
+    bool bClearVector = true;
+
+    std::vector<unsigned char> vWaveData;
+    std::vector<float> vSamplesForGraph;
+    unsigned int iActualSampleCount = 0;
+    unsigned int iSampleReadCountInOneRead = 30;
+    unsigned int iCurrentSampleReadCount = 0;
+
+    do
+    {
+        if (bClearVector)
+        {
+            vWaveData.clear();
+        }
+        else
+        {
+            bClearVector = true;
+        }
+
+        bool bExit = false;
+        iCurrentSampleReadCount = 0;
+        do
+        {
+            if (pCurrentTrack->readWaveData(&vWaveData, bEOF))
+            {
+                bReachedEOF = false;
+                bExit = true;
+
+                break;
+            }
+            else
+            {
+                iCurrentSampleReadCount++;
+
+                if (bEOF)
+                {
+                    break;
+                }
+            }
+        }while(iSampleReadCountInOneRead != iCurrentSampleReadCount);
+
+        if (bExit) break;
+
+
+        if ((vWaveData.size() < (info.iChannels * iDivideSampleCount)) && (bEOF == false))
+        {
+            bClearVector = false;
+        }
+
+        if (bEOF && vWaveData.size() == 0)
+        {
+            break;
+        }
+
+
+        if (bClearVector)
+        {
+            std::vector<float> vSampleData;
+
+            for (size_t i = 0; i < vWaveData.size(); i += (info.iBitsPerSample / 8) * info.iChannels)
+            {
+                std::vector<float> vSamplesChannels;
+
+                for (unsigned short j = 0; j < info.iChannels; j++)
+                {
+                    float fSample = 0.0f;
+
+                    if (info.iBitsPerSample == 16)
+                    {
+                        fSample = read16bitSample(vWaveData[i + (info.iBitsPerSample / 8) * j], vWaveData[i + 1 + (info.iBitsPerSample / 8) * j]);
+                    }
+                    else if (info.iBitsPerSample == 24)
+                    {
+                        fSample = read24bitSample(vWaveData[i +     (info.iBitsPerSample / 8) * j],
+                                                  vWaveData[i + 1 + (info.iBitsPerSample / 8) * j],
+                                                  vWaveData[i + 2 + (info.iBitsPerSample / 8) * j]);
+                    }
+                    else // 32 bit
+                    {
+                        fSample = read32bitSample(vWaveData[i +     (info.iBitsPerSample / 8) * j],
+                                                  vWaveData[i + 1 + (info.iBitsPerSample / 8) * j],
+                                                  vWaveData[i + 2 + (info.iBitsPerSample / 8) * j],
+                                                  vWaveData[i + 3 + (info.iBitsPerSample / 8) * j]);
+                    }
+
+                    vSamplesChannels.push_back(fSample);
+                }
+
+                // sample is normalized in [-1.0f, 1.0f]
+                // combine all channels into 1 sample
+
+                vSampleData.push_back(vSamplesChannels[0]);
+
+                for (size_t k = 1; k < vSamplesChannels.size(); k++)
+                {
+                    if (abs(vSamplesChannels[k]) > abs(vSampleData.back()))
+                    {
+                        vSampleData.back() = vSamplesChannels[k];
+                    }
+                }
+            }
+
+
+
+
+            bool bPlusOnly = vSampleData[0] > 0.0f ? true : false;
+
+            for (size_t i = 0; i < vSampleData.size();)
+            {
+                float fResultSample = vSampleData[i];
+                i++;
+
+                for (size_t j = 1; (j < iDivideSampleCount) && (i < vSampleData.size()); j++, i++)
+                {
+                    if (bPlusOnly)
+                    {
+                        if (vSampleData[i] > fResultSample)
+                        {
+                            fResultSample = vSampleData[i];
+                        }
+                    }
+                    else
+                    {
+                        if (vSampleData[i] < fResultSample)
+                        {
+                            fResultSample = vSampleData[i];
+                        }
+                    }
+                }
+
+                bPlusOnly = !bPlusOnly;
+
+                vSamplesForGraph.push_back((fResultSample / 2) + 0.5f); // convert to [0.0f; 1.0f]
+            }
+
+
+
+            iActualSampleCount += vSamplesForGraph.size();
+
+
+            pMainWindow->addWaveDataToGraph(vSamplesForGraph);
+            vSamplesForGraph.clear();
+
+
+
+            if (bEOF)
+            {
+                break;
+            }
+        }
+
+        mtxDrawGraph.lock();
+        if (bDrawingGraph == false)
+        {
+            mtxDrawGraph.unlock();
+
+            bReachedEOF = false;
+
+            break;
+        }
+        else
+        {
+            mtxDrawGraph.unlock();
+        }
+    }while(true);
+
+
+    if (bReachedEOF)
+    {
+        if (vSamplesForGraph.size() > 0)
+        {
+            pMainWindow->addWaveDataToGraph(vSamplesForGraph);
+        }
+
+        pMainWindow->setMaxXToGraph(iActualSampleCount);
+    }
+
+
+    mtxDrawGraph.lock();
+
+    bDrawingGraph = false;
+
+    mtxDrawGraph.unlock();
+
+
+    promiseFinishDrawGraph.set_value(false);
+}
+
+void AudioCore::waitForGraphToStop()
+{
+    // Wait for the draw thread to finish.
+    mtxDrawGraph.lock();
+
+    if (bDrawingGraph)
+    {
+        std::future<bool> f = promiseFinishDrawGraph.get_future();
+
+        bDrawingGraph = false;
+        mtxDrawGraph.unlock();
+
+        f.get();
+    }
+    else
+    {
+        mtxDrawGraph.unlock();
+    }
+}
+
 void AudioCore::applyAudioEffects()
 {
     pCurrentTrack->setPitchInSemitones(effects.fPitchInSemitones);
     pMix->setFXVolume(effects.fReverbVolume);
 }
 
+void AudioCore::monitorTrackPosition()
+{
+    promiseFinishMonitorTrackPos = std::promise<bool>();
+
+    bMonitorRunning = true;
+
+    while (bDestroyCalled == false)
+    {
+        mtxProcess.lock();
+
+        if (bLoadedTrackAtLeastOneTime && currentTrackState != CTS_DELETED)
+        {
+            if (currentTrackState == CTS_PLAYING)
+            {
+                double dPos;
+                pCurrentTrack->getPositionInSec(dPos);
+
+                SSoundInfo info;
+                pCurrentTrack->getSoundInfo(info);
+
+
+                std::string sTime = getTimeString(dPos);
+
+
+                pMainWindow->setCurrentPos(dPos / info.dSoundLengthInSec, sTime);
+            }
+        }
+
+        mtxProcess.unlock();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(UPDATE_TRACK_POS_IN_MS));
+    }
+
+    bMonitorRunning = false;
+
+    promiseFinishMonitorTrackPos.set_value(false);
+}
+
+std::string AudioCore::getTimeString(double dTimeInSec)
+{
+    unsigned int iSeconds = static_cast<unsigned int>(std::round(dTimeInSec));
+    unsigned int iMinutes = iSeconds / 60;
+    iSeconds -= (iMinutes * 60);
+
+    std::string sTime = "";
+    sTime += std::to_string(iMinutes);
+    sTime += ":";
+    if (iSeconds < 10) sTime += "0";
+    sTime += std::to_string(iSeconds);
+
+    return sTime;
+}
+
+float AudioCore::read16bitSample(unsigned char iByte1, unsigned char iByte2)
+{
+    float fSample = 0.0f;
+
+    short int iSample = 0;
+
+    std::memcpy(reinterpret_cast<char*>(&iSample),     &iByte1, 1);
+    std::memcpy(reinterpret_cast<char*>(&iSample) + 1, &iByte2, 1);
+
+    // normalize to [-1.0f, 1.0f]
+    fSample = static_cast<float>(iSample) / SHRT_MAX;
+
+    return fSample;
+}
+
+float AudioCore::read24bitSample(unsigned char iByte1, unsigned char iByte2, unsigned char iByte3)
+{
+    float fSample = 0.0f;
+
+    // interpret 24 bit as int 32
+    int iSample = ( (iByte3 << 24) | (iByte2 << 16) | (iByte1 << 8) ) >> 8;
+
+    // normalize to [-1.0f, 1.0f]
+    fSample = static_cast<float>(iSample) / 16777216; // 2^24
+
+    return fSample;
+}
+
+float AudioCore::read32bitSample(unsigned char iByte1, unsigned char iByte2, unsigned char iByte3, unsigned char iByte4)
+{
+    float fSample = 0.0f;
+
+    int iSample = 0;
+
+    std::memcpy(reinterpret_cast<char*>(&iSample),     &iByte1, 1);
+    std::memcpy(reinterpret_cast<char*>(&iSample) + 1, &iByte2, 1);
+    std::memcpy(reinterpret_cast<char*>(&iSample) + 2, &iByte3, 1);
+    std::memcpy(reinterpret_cast<char*>(&iSample) + 3, &iByte4, 1);
+
+    // normalize to [-1.0f, 1.0f]
+    fSample = static_cast<float>(iSample) / INT_MAX;
+
+    return fSample;
+}
+
 AudioCore::~AudioCore()
 {
+    std::future<bool> f = promiseFinishMonitorTrackPos.get_future();
+
+    bDestroyCalled = true;
+
     if (currentTrackState != CTS_DELETED)
     {
         pCurrentTrack->stopSound();
+    }
+
+    if (bMonitorRunning)
+    {
+        f.get(); // wait for monitorTrackPosition() thread to finish.
     }
 
     delete pCurrentTrack;

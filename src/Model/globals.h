@@ -39,3 +39,13 @@ struct CurrentEffects
 #define EXTENSION_MP3 ".mp3"
 #define EXTENSION_WAV ".wav"
 #define EXTENSION_OGG ".ogg"
+
+#define PLAYED_SECTION_ALPHA 130
+#define REPEAT_GRAYED_ALPHA 120
+#define MAX_Y_AXIS_VALUE 1.03
+#define MAX_X_AXIS_VALUE 1000
+
+#define UPDATE_TRACK_POS_IN_MS 1000
+
+#define REPEAT_SECTION_DELTA_IN_SEC 1.0
+#define TRANSITION_SLEEP_MS 1

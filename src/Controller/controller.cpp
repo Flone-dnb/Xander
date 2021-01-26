@@ -30,6 +30,11 @@ void Controller::removeTrack(const std::wstring &sAudioTitle)
     pAudioCore->removeTrack(sAudioTitle);
 }
 
+void Controller::setTrackPos(double x)
+{
+    pAudioCore->setTrackPos(x);
+}
+
 void Controller::moveUp(const std::wstring &sAudioTitle)
 {
     pAudioCore->moveUp(sAudioTitle);

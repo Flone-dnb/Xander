@@ -82,6 +82,8 @@ public:
     bool getLoadedAudioDataSizeInBytes(size_t& iSizeInBytes);
     bool isSoundStoppedManually() const;
 
+    bool readWaveData     (std::vector<unsigned char>* pvWaveData, bool& bEndOfStream);
+
 private:
 
     bool loadFileIntoMemory(const std::wstring& sAudioFilePath, std::vector<unsigned char>& vAudioData, WAVEFORMATEX** pFormat, unsigned int& iWaveFormatSize);
@@ -90,7 +92,8 @@ private:
     bool streamAudioFile(IMFSourceReader* pAsyncReader);
     bool loopStream(IMFSourceReader* pAsyncReader, IXAudio2SourceVoice* pSourceVoice);
 
-    bool createSourceReader(const std::wstring& sAudioFilePath, SourceReaderCallback** pAsyncSourceReaderCallback, IMFSourceReader*& pOutSourceReader, WAVEFORMATEX** pFormat, unsigned int& iWaveFormatSize);
+    bool createSourceReader(const std::wstring& sAudioFilePath, SourceReaderCallback** pAsyncSourceReaderCallback,
+                            IMFSourceReader*& pOutSourceReader, WAVEFORMATEX** pFormat, unsigned int& iWaveFormatSize, bool bOptional = false);
 
     bool waitForUnpause();
 
@@ -112,11 +115,14 @@ private:
 
 
     Microsoft::WRL::ComPtr<IMFAttributes> pSourceReaderConfig;
+    Microsoft::WRL::ComPtr<IMFAttributes> pOptionalSourceReaderConfig;
 
 
     // User callbacks.
     std::function<void(SSound*)> onPlayEndCallback;
 
+
+    IMFSourceReader*       pOptionalSourceReader;
 
     IMFSourceReader*       pAsyncSourceReader;
     SourceReaderCallback   sourceReaderCallback;
@@ -141,6 +147,7 @@ private:
 
     std::mutex     mtxStreamingSwitch;
     std::mutex     mtxSoundState;
+    std::mutex     mtxOptionalSourceReaderRead;
 
 
     std::wstring   sAudioFileDiskPath;
@@ -149,7 +156,8 @@ private:
     XAUDIO2_BUFFER audioBuffer;
     WAVEFORMATEX   soundFormat;
     unsigned int   iWaveFormatSize;
-    unsigned long long iCurrentSamplePosition;
+    double         dCurrentStreamingPosInSec;
+    unsigned long long iSamplesPlayedOnLastSetPos;
     size_t         iLastReadSampleSize;
 
     SSoundInfo     soundInfo;

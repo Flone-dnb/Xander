@@ -25,6 +25,7 @@
 #include "View/AboutQtWindow/aboutqtwindow.h"
 #include "View/SearchWindow/searchwindow.h"
 #include "View/FXWindow/fxwindow.h"
+#include "../ext/qcustomplot/qcustomplot.h"
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -42,24 +43,19 @@ MainWindow::MainWindow(QWidget *parent)
     bRepeatButtonStateActive = false;
     bRandomButtonStateActive = false;
 
+
+    qRegisterMetaType<std::vector<float>>("std::vector<float>");
+
+
     // This to this.
     connect(this, &MainWindow::signalSetNewPlayingTrack, this, &MainWindow::slotSetNewPlayingTrack);
     connect(this, &MainWindow::signalChangePlayButtonStyle, this, &MainWindow::slotChangePlayButtonStyle);
     connect(this, &MainWindow::signalSetTrackInfo, this, &MainWindow::slotSetTrackInfo);
     connect(this, &MainWindow::signalShowMessageBox, this, &MainWindow::slotShowMessageBox);
-}
-
-void MainWindow::onExecCalled()
-{
-    // Setup tray icon.
-
-    pTrayIcon = new QSystemTrayIcon(this);
-
-    QIcon icon = QIcon(RES_LOGO_PATH);
-    pTrayIcon->setIcon(icon);
-
-    connect(pTrayIcon, &QSystemTrayIcon::activated, this, &MainWindow::slotTrayIconActivated);
-
+    connect(this, &MainWindow::signalClearGraph, this, &MainWindow::slotClearGraph);
+    connect(this, &MainWindow::signalSetMaxXToGraph, this, &MainWindow::slotSetMaxXToGraph);
+    connect(this, &MainWindow::signalAddWaveDataToGraph, this, &MainWindow::slotAddWaveDataToGraph);
+    connect(this, &MainWindow::signalSetCurrentPos, this, &MainWindow::slotSetCurrentPos);
 
 
     // Apply stylesheet.
@@ -73,12 +69,27 @@ void MainWindow::onExecCalled()
     ui->pushButton_fx->setProperty("cssClass", "fx");
     ui->pushButton_clear->setProperty("cssClass", "clear");
     ui->scrollAreaWidgetContents->setProperty("cssClass", "tracklist_widget");
+    ui->frame->setProperty("cssClass", "graphWidget");
 
     ui->scrollAreaWidgetContents->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     ui->verticalLayout_tracks->layout()->setSizeConstraint(QLayout::SetFixedSize);
 
     applyStyle();
 
+
+    setupGraph();
+}
+
+void MainWindow::onExecCalled()
+{
+    // Setup tray icon.
+
+    pTrayIcon = new QSystemTrayIcon(this);
+
+    QIcon icon = QIcon(RES_LOGO_PATH);
+    pTrayIcon->setIcon(icon);
+
+    connect(pTrayIcon, &QSystemTrayIcon::activated, this, &MainWindow::slotTrayIconActivated);
 
 
 
@@ -296,6 +307,31 @@ void MainWindow::searchSetSelected(TrackWidget* pTrackWidget)
     on_trackWidget_mousePress(pTrackWidget);
 
     ui->scrollArea_tracklist->ensureWidgetVisible(pTrackWidget);
+}
+
+void MainWindow::clearGraph()
+{
+    emit signalClearGraph();
+}
+
+void MainWindow::setMaxXToGraph(unsigned int iMaxX)
+{
+    emit signalSetMaxXToGraph(iMaxX);
+}
+
+void MainWindow::addWaveDataToGraph(std::vector<float> vWaveData)
+{
+    emit signalAddWaveDataToGraph(vWaveData);
+}
+
+void MainWindow::setCurrentPos(double x, const std::string &sTime)
+{
+    emit signalSetCurrentPos(x, QString::fromStdString(sTime));
+}
+
+unsigned int MainWindow::getMaxXPosOnGraph()
+{
+    return iMaxXOnGraph;
 }
 
 void MainWindow::on_horizontalSlider_volume_valueChanged(int value)
@@ -595,6 +631,78 @@ void MainWindow::slotSetTrackInfo(QString sTrackTitle, QString sTrackInfo, std::
     pPromiseFinish->set_value(false);
 }
 
+void MainWindow::slotClearGraph()
+{
+    std::lock_guard<std::mutex> lock(mtxDrawGraph);
+
+    pGraphTextTrackTime->setText("");
+    backgnd->bottomRight->setCoords(0, 1);
+
+    iCurrentXPosOnGraph = 0;
+    ui->widget_graph->graph(0)->data()->clear();
+
+    ui->widget_graph->xAxis->setRange(0.0, 0.01);
+
+    slotSetCurrentPos(0, "");
+
+    ui->widget_graph->replot();
+}
+
+void MainWindow::slotSetMaxXToGraph(unsigned int iMaxX)
+{
+    std::lock_guard<std::mutex> lock(mtxDrawGraph);
+
+    ui->widget_graph->xAxis->setRange(0, iMaxX);
+
+    iMaxXOnGraph = iMaxX;
+}
+
+void MainWindow::slotAddWaveDataToGraph(std::vector<float> vWaveData)
+{
+    std::lock_guard<std::mutex> lock(mtxDrawGraph);
+
+    QVector<double> x;
+    QVector<double> y;
+
+
+    for (size_t i = 0; i < vWaveData.size(); i++)
+    {
+        x.push_back( static_cast<double>(iCurrentXPosOnGraph) );
+        iCurrentXPosOnGraph++;
+
+        y.push_back( static_cast<double>(vWaveData[i]) );
+    }
+
+
+    ui->widget_graph->graph(0)->addData(x, y, true);
+
+    ui->widget_graph->replot();
+}
+
+void MainWindow::slotSetCurrentPos(double x, QString sTime)
+{
+    backgnd->bottomRight->setCoords(x, 1);
+    pGraphTextTrackTime->setText(sTime);
+
+    if ( (x > (minPosOnGraphForText + 0.03)) && (x < maxPosOnGraphForText) )
+    {
+        pGraphTextTrackTime->position->setCoords(x - 0.03, 0.5);
+    }
+    else
+    {
+        if (x <= minPosOnGraphForText + 0.03)
+        {
+            pGraphTextTrackTime->position->setCoords(minPosOnGraphForText, 0.5);
+        }
+        else if (x >= maxPosOnGraphForText)
+        {
+            pGraphTextTrackTime->position->setCoords(maxPosOnGraphForText - 0.03, 0.5);
+        }
+    }
+
+    ui->widget_graph->replot();
+}
+
 void MainWindow::on_pushButton_play_clicked()
 {
     mtxUIStateChange.lock();
@@ -680,6 +788,80 @@ void MainWindow::on_actionOpen_Tracklist_triggered()
             pController->openTracklist(file.toStdWString(), false);
         }
     }
+}
+
+void MainWindow::slotClickOnGraph(QMouseEvent *ev)
+{
+    if (ev->button() == Qt::MouseButton::LeftButton)
+    {
+        pController->setTrackPos( static_cast<unsigned int>(ui->widget_graph->xAxis->pixelToCoord(ev->pos().x())) );
+    }
+}
+
+void MainWindow::setupGraph()
+{
+    iMaxXOnGraph = 1;
+
+    // Graph
+    ui->widget_graph->addGraph();
+    ui->widget_graph->xAxis->setRange(0.0, 1.0);
+    ui->widget_graph->yAxis->setRange(0.0, MAX_Y_AXIS_VALUE);
+
+    QPen pen;
+    pen.setWidth(1);
+    pen.setColor(QColor(255, 130, 0));
+    ui->widget_graph->graph(0)->setPen(pen);
+
+    // color and stuff
+    ui->widget_graph->setBackground(QColor(24, 24, 24));
+    ui->widget_graph->xAxis->grid()->setVisible(false);
+    ui->widget_graph->yAxis->grid()->setVisible(false);
+    ui->widget_graph->xAxis->setTicks(false);
+    ui->widget_graph->yAxis->setTicks(false);
+    ui->widget_graph->graph(0)->setLineStyle(QCPGraph::LineStyle::lsLine);
+    ui->widget_graph->axisRect()->setAutoMargins(QCP::msNone);
+    ui->widget_graph->axisRect()->setMargins(QMargins(0,0,0,0));
+
+    connect(ui->widget_graph, &QCustomPlot::mousePress, this, &MainWindow::slotClickOnGraph);
+
+
+    // fill rect
+    backgnd = new QCPItemRect(ui->widget_graph);
+    backgnd->topLeft->setType(QCPItemPosition::ptAxisRectRatio);
+    backgnd->topLeft->setCoords(0, 0);
+    backgnd->bottomRight->setType(QCPItemPosition::ptAxisRectRatio);
+    backgnd->bottomRight->setCoords(0, MAX_Y_AXIS_VALUE);
+    backgnd->setBrush(QBrush(QColor(0, 0, 0, PLAYED_SECTION_ALPHA)));
+    backgnd->setPen(Qt::NoPen);
+
+
+    backgndRight = new QCPItemRect(ui->widget_graph);
+    backgndRight->topLeft->setType(QCPItemPosition::ptAxisRectRatio);
+    backgndRight->topLeft->setCoords(0, 0);
+    backgndRight->bottomRight->setType(QCPItemPosition::ptAxisRectRatio);
+    backgndRight->bottomRight->setCoords(0, MAX_Y_AXIS_VALUE);
+    backgndRight->setBrush(QBrush(QColor(0, 0, 0, PLAYED_SECTION_ALPHA)));
+    backgndRight->setPen(Qt::NoPen);
+
+
+    // text
+    pGraphTextTrackTime = new QCPItemText(ui->widget_graph);
+    pGraphTextTrackTime->position->setType(QCPItemPosition::ptAxisRectRatio);
+    pGraphTextTrackTime->position->setCoords(0, 0.5);
+    pGraphTextTrackTime->setFont( QFont("Segoe UI", 10) );
+    pGraphTextTrackTime->setColor(Qt::white);
+    pGraphTextTrackTime->setPen(Qt::NoPen);
+    pGraphTextTrackTime->setSelectedPen(Qt::NoPen);
+    pGraphTextTrackTime->setText("");
+
+
+
+    iCurrentXPosOnGraph = 0;
+
+    minPosOnGraphForText = MAX_X_AXIS_VALUE * 3 / 100;
+    minPosOnGraphForText /= static_cast<double>(MAX_X_AXIS_VALUE);
+    maxPosOnGraphForText = MAX_X_AXIS_VALUE * 97 / 100;
+    maxPosOnGraphForText /= static_cast<double>(MAX_X_AXIS_VALUE);
 }
 
 void MainWindow::on_pushButton_fx_clicked()

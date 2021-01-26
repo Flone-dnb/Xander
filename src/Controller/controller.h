@@ -24,6 +24,7 @@ public:
     void addTracks  (const std::vector<std::wstring>& vFiles);
     void addTracks  (const std::wstring& sFolderPath);
     void removeTrack(const std::wstring& sAudioTitle);
+    void setTrackPos(double x);
 
 
     void moveUp     (const std::wstring& sAudioTitle);

@@ -13,6 +13,7 @@
 #include <fstream>
 #include <mutex>
 #include <random>
+#include <future>
 
 // Custom
 #include "Model/globals.h"
@@ -31,6 +32,13 @@ enum CURRENT_TRACK_STATE
     CTS_PAUSED = 3
 };
 
+enum REPEAT_SECTION_STATE
+{
+    RSS_CLEARED = 0,
+    RSS_LEFT_SET = 1,
+    RSS_RIGHT_SET = 2
+};
+
 class AudioCore
 {
 public:
@@ -41,6 +49,7 @@ public:
     void addTracks   (const std::vector<std::wstring>& vFiles);
     void addTracks   (const std::wstring& sFolderPath);
     void removeTrack (const std::wstring& sAudioTitle);
+    void setTrackPos (double x);
 
 
     void moveUp     (const std::wstring& sAudioTitle);
@@ -80,16 +89,25 @@ public:
 
 private:
 
-    std::wstring getTrackTitle(const std::wstring& sAudioPath);
+    std::wstring getTrackTitle (const std::wstring& sAudioPath);
     std::wstring getTrackExtension(const std::wstring& sTrackPath);
     std::wstring  getTrackInfo (XAudioFile* pTrack);
 
-    void removeTrack(XAudioFile* pAudio);
-    void onCurrentTrackEnded(SSound* pTrack);
+    void removeTrack           (XAudioFile* pAudio);
+    void onCurrentTrackEnded   (SSound* pTrack);
 
-    size_t findCaseInsensitive(std::wstring sText, std::wstring sKeyword);
+    size_t findCaseInsensitive (std::wstring sText, std::wstring sKeyword);
 
-    void applyAudioEffects();
+    void drawGraph             ();
+    void waitForGraphToStop    ();
+    void applyAudioEffects     ();
+
+    void monitorTrackPosition  ();
+    std::string getTimeString  (double dTimeInSec);
+
+    float read16bitSample      (unsigned char iByte1, unsigned char iByte2);
+    float read24bitSample      (unsigned char iByte1, unsigned char iByte2, unsigned char iByte3);
+    float read32bitSample      (unsigned char iByte1, unsigned char iByte2, unsigned char iByte3, unsigned char iByte4);
 
 
     MainWindow*   pMainWindow;
@@ -107,16 +125,29 @@ private:
     CurrentEffects      effects;
 
 
+    std::promise<bool>  promiseFinishDrawGraph;
+    std::mutex          mtxDrawGraph;
+    bool                bDrawingGraph;
+
+
+    std::promise<bool>  promiseFinishMonitorTrackPos;
+    bool                bMonitorRunning;
+
+
     // Search
     std::vector<size_t> vSearchResult;
     size_t              iCurrentPosInSearchVec;
     bool                bFirstSearchAfterKeyChange;
 
+
     std::mutex    mtxProcess;
+
 
     bool          bLoadedTrackAtLeastOneTime;
     CURRENT_TRACK_STATE currentTrackState;
 
+
     bool          bRandomTrack;
     bool          bRepeatTrack;
+    bool          bDestroyCalled;
 };

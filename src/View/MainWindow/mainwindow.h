@@ -23,6 +23,8 @@ class QSystemTrayIcon;
 class QHideEvent;
 class Controller;
 class TrackWidget;
+class QCPItemText;
+class QCPItemRect;
 
 class MainWindow : public QMainWindow
 {
@@ -35,6 +37,10 @@ signals:
     void signalChangePlayButtonStyle (bool bChangeStyleToPause, std::promise<bool>* pPromiseFinish);
     void signalShowMessageBox        (QString sMessageTitle, QString sMessageText, bool bErrorMessage);
     void signalSetTrackInfo          (QString sTrackTitle, QString sTrackInfo, std::promise<bool>* pPromiseFinish);
+    void signalClearGraph            ();
+    void signalSetMaxXToGraph        (unsigned int iMaxX);
+    void signalAddWaveDataToGraph    (std::vector<float> vWaveData);
+    void signalSetCurrentPos         (double x, QString sTime);
 
     void signalSearchMatchCount      (size_t iCount);
 
@@ -62,6 +68,15 @@ public:
 
     void setSearchMatchCount      (size_t iMatches);
     void searchSetSelected        (TrackWidget* pTrackWidget);
+
+
+    void clearGraph               ();
+    void setMaxXToGraph           (unsigned int iMaxX);
+    void addWaveDataToGraph       (std::vector<float> vWaveData);
+    void setCurrentPos            (double x, const std::string& sTime);
+
+
+    unsigned int getMaxXPosOnGraph();
 
 
     void showMessageBox           (std::wstring sMessageTitle, std::wstring sMessageText, bool bErrorMessage, bool bSendSignal);
@@ -95,6 +110,10 @@ private slots:
     void  slotChangePlayButtonStyle       (bool bChangeStyleToPause, std::promise<bool>* pPromiseFinish);
     void  slotShowMessageBox              (QString sMessageTitle, QString sMessageText, bool bErrorMessage);
     void  slotSetTrackInfo                (QString sTrackTitle, QString sTrackInfo, std::promise<bool>* pPromiseFinish);
+    void  slotClearGraph                  ();
+    void  slotSetMaxXToGraph              (unsigned int iMaxX);
+    void  slotAddWaveDataToGraph          (std::vector<float> vWaveData);
+    void  slotSetCurrentPos               (double x, QString sTime);
 
     // Tray icon.
     void  slotTrayIconActivated           ();
@@ -120,27 +139,41 @@ private slots:
     void  on_actionSave_Tracklist_triggered();
     void  on_actionOpen_Tracklist_triggered();
 
+    // Oscillogram.
+    void  slotClickOnGraph                 (QMouseEvent* ev);
+
 private:
 
     friend class TrackList;
     friend class TrackWidget;
     friend class FXWindow;
 
+    void setupGraph ();
     void applyStyle ();
 
 
     Ui::MainWindow * ui;
 
     QSystemTrayIcon* pTrayIcon;
+    QCPItemText*     pGraphTextTrackTime;
+    QCPItemRect*     backgnd;
+    QCPItemRect*     backgndRight;
 
     Controller*      pController;
 
 
     std::mutex       mtxUIStateChange;
+    std::mutex       mtxDrawGraph;
 
 
     TrackWidget*     pSelectedTrack;
     TrackWidget*     pPlayingTrack;
+
+
+    double           minPosOnGraphForText;
+    double           maxPosOnGraphForText;
+    unsigned int     iCurrentXPosOnGraph;
+    unsigned int     iMaxXOnGraph;
 
 
     bool             bPlayButtonStatePlay;
