@@ -165,6 +165,8 @@ void AudioCore::removeTrack(const std::wstring &sAudioTitle)
                 pMainWindow->clearGraph();
 
                 currentTrackState = CTS_DELETED;
+
+                pMainWindow->changePlayButtonStyle(false, false);
             }
 
 
@@ -358,7 +360,7 @@ void AudioCore::playTrack(const std::wstring &sTrackTitle, bool bCalledFromOther
 
 void AudioCore::playTrack(bool bCalledFromOtherThread)
 {
-    std::lock_guard<std::mutex> lock(mtxProcess);
+    mtxProcess.lock();
 
     if (bLoadedTrackAtLeastOneTime && currentTrackState != CTS_DELETED)
     {
@@ -378,6 +380,21 @@ void AudioCore::playTrack(bool bCalledFromOtherThread)
 
             currentTrackState = CTS_PLAYING;
         }
+
+        mtxProcess.unlock();
+    }
+    else if (vAudioTracks.size() > 0)
+    {
+        mtxProcess.unlock();
+
+        playTrack(vAudioTracks[0]->sAudioTitle, bCalledFromOtherThread);
+
+        pMainWindow->setNewPlayingTrack(vAudioTracks[0]->pTrackWidget, bCalledFromOtherThread);
+        pMainWindow->changePlayButtonStyle(true, bCalledFromOtherThread);
+    }
+    else
+    {
+        mtxProcess.unlock();
     }
 }
 
