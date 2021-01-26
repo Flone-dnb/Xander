@@ -92,31 +92,31 @@ bool SSound::loadAudioFile(const std::wstring &sAudioFilePath, bool bStreamAudio
 
         XAUDIO2_VOICE_SENDS sendTo = {0};
 
-        if (pSoundMix)
-        {
-            XAUDIO2_SEND_DESCRIPTOR d1;
-            d1.Flags = 0;
-            d1.pOutputVoice = pSoundMix->pSubmixVoice;
+		HRESULT hr = S_OK;
 
-            XAUDIO2_SEND_DESCRIPTOR d2;
-            d2.Flags = 0;
-            d2.pOutputVoice = pSoundMix->pSubmixVoiceFX;
+		if (pSoundMix)
+		{
+			XAUDIO2_SEND_DESCRIPTOR sendDescriptors[2];
+			sendDescriptors[0].Flags = 0;
+			sendDescriptors[0].pOutputVoice = pSoundMix->pSubmixVoice;
+			sendDescriptors[1].Flags = 0;
+			sendDescriptors[1].pOutputVoice = pSoundMix->pSubmixVoiceFX;
 
-            XAUDIO2_SEND_DESCRIPTOR desc[2] = {d1, d2};
+			const XAUDIO2_VOICE_SENDS sendList = { 2, sendDescriptors };
 
-            sendTo.SendCount = 2;
-            sendTo.pSends = desc;
-        }
-        else
-        {
-            XAUDIO2_SEND_DESCRIPTOR d;
-            d.Flags = 0;
-            d.pOutputVoice = pAudioEngine->pMasteringVoice;
+			hr = pAudioEngine->pXAudio2Engine->CreateSourceVoice(&pSourceVoice, &soundFormat, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &voiceCallback, &sendList, NULL);
+		}
+		else
+		{
+			XAUDIO2_SEND_DESCRIPTOR sendDescriptors[1];
+			sendDescriptors[0].Flags = 0;
+			sendDescriptors[0].pOutputVoice = pAudioEngine->pMasteringVoice;
 
-            sendTo = {1, &d};
-        }
+			const XAUDIO2_VOICE_SENDS sendList = { 1, sendDescriptors };
 
-        HRESULT hr = pAudioEngine->pXAudio2Engine->CreateSourceVoice(&pSourceVoice, &soundFormat, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &voiceCallback, &sendTo, NULL);
+			hr = pAudioEngine->pXAudio2Engine->CreateSourceVoice(&pSourceVoice, &soundFormat, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &voiceCallback, &sendList, NULL);
+		}
+
         if (FAILED(hr))
         {
             pAudioEngine->showError(hr, L"Sound::loadAudioFile::CreateSourceVoice()");
@@ -142,34 +142,33 @@ bool SSound::loadAudioFile(const std::wstring &sAudioFilePath, bool bStreamAudio
         readSoundInfo(pAsyncSourceReader, &soundFormat);
 
 
-        XAUDIO2_VOICE_SENDS sendTo = {0};
+
+		HRESULT hr = S_OK;
 
         if (pSoundMix)
         {
-            XAUDIO2_SEND_DESCRIPTOR d1;
-            d1.Flags = 0;
-            d1.pOutputVoice = pSoundMix->pSubmixVoice;
+			XAUDIO2_SEND_DESCRIPTOR sendDescriptors[2];
+			sendDescriptors[0].Flags = 0;
+			sendDescriptors[0].pOutputVoice = pSoundMix->pSubmixVoice;
+			sendDescriptors[1].Flags = 0;
+			sendDescriptors[1].pOutputVoice = pSoundMix->pSubmixVoiceFX;
 
-            XAUDIO2_SEND_DESCRIPTOR d2;
-            d2.Flags = 0;
-            d2.pOutputVoice = pSoundMix->pSubmixVoiceFX;
+			const XAUDIO2_VOICE_SENDS sendList = { 2, sendDescriptors };
 
-            XAUDIO2_SEND_DESCRIPTOR desc[2] = {d1, d2};
-
-            sendTo.SendCount = 2;
-            sendTo.pSends = desc;
+			hr = pAudioEngine->pXAudio2Engine->CreateSourceVoice(&pSourceVoice, &soundFormat, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &voiceCallback, &sendList, NULL);
         }
         else
         {
-            XAUDIO2_SEND_DESCRIPTOR d;
-            d.Flags = 0;
-            d.pOutputVoice = pAudioEngine->pMasteringVoice;
+            XAUDIO2_SEND_DESCRIPTOR sendDescriptors[1];
+			sendDescriptors[0].Flags = 0;
+			sendDescriptors[0].pOutputVoice = pAudioEngine->pMasteringVoice;
 
-            sendTo = {1, &d};
+			const XAUDIO2_VOICE_SENDS sendList = { 1, sendDescriptors };
+
+			hr = pAudioEngine->pXAudio2Engine->CreateSourceVoice(&pSourceVoice, &soundFormat, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &voiceCallback, &sendList, NULL);
         }
 
         // create the source voice
-        HRESULT hr = pAudioEngine->pXAudio2Engine->CreateSourceVoice(&pSourceVoice, &soundFormat, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &voiceCallback, &sendTo, NULL);
         if (FAILED(hr))
         {
             pAudioEngine->showError(hr, L"SSound::loadAudioFile::CreateSourceVoice() [async]");
