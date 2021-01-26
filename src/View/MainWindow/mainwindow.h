@@ -51,6 +51,7 @@ public:
 
 
     void onExecCalled             ();
+    void addTracksFromArgs        (QStringList paths);
 
 
     void addTrackWidget           (const std::wstring& sTrackTitle, std::promise<TrackWidget*>* pPromiseCreateWidget);
@@ -151,6 +152,7 @@ private:
     void setupGraph ();
     void applyStyle ();
 
+    QStringList      args;
 
     Ui::MainWindow * ui;
 

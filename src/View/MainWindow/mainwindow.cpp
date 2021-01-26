@@ -103,6 +103,26 @@ void MainWindow::onExecCalled()
     // Create Controller.
 
     pController = new Controller(this);
+
+
+    if (args.size() > 0)
+    {
+        std::vector<std::wstring> vTracks;
+
+        for (int i = 0; i < args.size(); i++)
+        {
+            vTracks.push_back(args[i].toStdWString());
+        }
+
+        args.clear();
+
+        pController->addTracks(vTracks);
+    }
+}
+
+void MainWindow::addTracksFromArgs(QStringList paths)
+{
+    this->args = paths;
 }
 
 void MainWindow::addTrackWidget(const std::wstring &sTrackTitle, std::promise<TrackWidget*> *pPromiseCreateWidget)
@@ -190,7 +210,30 @@ void MainWindow::slotTrayIconActivated()
 
 void MainWindow::applyStyle()
 {
-    QFile File(QString("style.css"));
+    wchar_t vPathToExe[MAX_PATH];
+    memset(vPathToExe, 0, MAX_PATH);
+
+    GetModuleFileNameW(NULL, vPathToExe, MAX_PATH);
+
+    std::wstring sPathToFolder = vPathToExe;
+
+    // Leave folder (without .exe).
+
+    for (size_t i = sPathToFolder.size() - 1; i > 0; i--)
+    {
+        if (sPathToFolder[i] == L'\\')
+        {
+            break;
+        }
+
+        sPathToFolder.pop_back();
+    }
+
+    sPathToFolder += L"style.css";
+
+
+
+    QFile File(QString::fromStdWString(sPathToFolder));
 
     if( File.exists() && File.open(QFile::ReadOnly) )
     {

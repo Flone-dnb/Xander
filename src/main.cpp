@@ -23,5 +23,18 @@ int main(int argc, char *argv[])
 
     QTimer::singleShot(0, &w, &MainWindow::onExecCalled);
 
+    if (argc > 1)
+    {
+        // Load tracks
+
+        QStringList paths;
+        for (int i = 1; i < argc; i++)
+        {
+            paths.push_back(a.arguments().at(i));
+        }
+
+        w.addTracksFromArgs(paths);
+    }
+
     return a.exec();
 }
