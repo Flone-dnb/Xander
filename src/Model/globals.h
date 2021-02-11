@@ -29,7 +29,7 @@ struct CurrentEffects
     float fReverbVolume = 0.0f;
 };
 
-#define XANDER_VERSION "1.0.0"
+#define XANDER_VERSION "1.1.0"
 
 #define RES_LOGO_PATH ":/logo.png"
 
