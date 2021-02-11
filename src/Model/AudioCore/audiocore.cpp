@@ -594,6 +594,25 @@ void AudioCore::nextTrack(bool bCalledFromOtherThread)
             pMainWindow->setNewPlayingTrack(vAudioTracks[iNextTrackIndex]->pTrackWidget, bCalledFromOtherThread);
         }
     }
+    else if (vAudioTracks.size() > 0)
+    {
+        mtxProcess.unlock();
+
+        size_t iTrackIDToPlay = 0;
+
+        if (bRandomTrack)
+        {
+            std::uniform_int_distribution<> uid(0, static_cast<int>(vAudioTracks.size()) - 1);
+
+            iTrackIDToPlay = static_cast<size_t>(uid(*pRndGen));
+        }
+
+
+        playTrack(vAudioTracks[iTrackIDToPlay]->sAudioTitle, bCalledFromOtherThread);
+
+        pMainWindow->setNewPlayingTrack(vAudioTracks[iTrackIDToPlay]->pTrackWidget, bCalledFromOtherThread);
+        pMainWindow->changePlayButtonStyle(true, bCalledFromOtherThread);
+    }
     else
     {
         mtxProcess.unlock();
