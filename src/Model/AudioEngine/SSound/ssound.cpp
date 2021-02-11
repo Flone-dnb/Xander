@@ -360,6 +360,27 @@ bool SSound::stopSound()
     }
 
 
+    if (bCurrentlyStreaming && bUseStreaming)
+    {
+        bStopStreaming = true;
+
+        SetEvent(voiceCallback.hBufferEndEvent);
+
+        if (soundState == SS_PAUSED)
+        {
+            mtxSoundState.lock();
+
+            soundState = SS_PLAYING;
+
+            mtxSoundState.unlock();
+
+            SetEvent(hEventUnpauseSound);
+        }
+
+        stopStreaming();
+    }
+
+
     if (bUseStreaming)
     {
         // Restart the stream.
@@ -383,25 +404,6 @@ bool SSound::stopSound()
 
 
     audioBuffer.PlayBegin = 0;
-
-
-    if (bCurrentlyStreaming && bUseStreaming)
-    {
-        bStopStreaming = true;
-
-        if (soundState == SS_PAUSED)
-        {
-            mtxSoundState.lock();
-
-            soundState = SS_PLAYING;
-
-            mtxSoundState.unlock();
-
-            SetEvent(hEventUnpauseSound);
-        }
-
-        stopStreaming();
-    }
 
 
     soundState = SS_NOT_PLAYING;
