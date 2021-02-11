@@ -283,7 +283,10 @@ void AudioCore::playTrack(const std::wstring &sTrackTitle, bool bCalledFromOther
     }
 
 
-    waitForGraphToStop();
+    if (vPlayedHistory.size() == 0 || vPlayedHistory.back()->sAudioTitle != sTrackTitle)
+    {
+        waitForGraphToStop();
+    }
 
 
     for (size_t i = 0; i < vAudioTracks.size(); i++)
