@@ -430,14 +430,44 @@ bool SSound::setPositionInSec(double dPositionInSec)
     {
         LONGLONG pos = static_cast<LONGLONG>(dPositionInSec * 10000000);
 
+
+
         PROPVARIANT var;
         HRESULT hr = InitPropVariantFromInt64(pos, &var);
         if (SUCCEEDED(hr))
         {
             //dCurrentStreamingPosInSec = dPositionInSec;
 
+            hr = pAsyncSourceReader->Flush((DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM);
+            if (FAILED(hr))
+            {
+                pAudioEngine->showError(hr, L"Sound::setPositionInSec::Flush()");
+                return true;
+            }
+
             hr = pAsyncSourceReader->SetCurrentPosition(GUID_NULL, var);
             PropVariantClear(&var);
+
+            hr = pSourceVoice->Stop();
+            if (FAILED(hr))
+            {
+                pAudioEngine->showError(hr, L"Sound::setPositionInSec::Stop()");
+                return true;
+            }
+
+            hr = pSourceVoice->FlushSourceBuffers();
+            if (FAILED(hr))
+            {
+                pAudioEngine->showError(hr, L"Sound::setPositionInSec::FlushSourceBuffers()");
+                return true;
+            }
+
+            hr = pSourceVoice->Start();
+            if (FAILED(hr))
+            {
+                pAudioEngine->showError(hr, L"Sound::setPositionInSec::Start()");
+                return true;
+            }
         }
         else
         {
