@@ -56,6 +56,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this, &MainWindow::signalSetMaxXToGraph, this, &MainWindow::slotSetMaxXToGraph);
     connect(this, &MainWindow::signalAddWaveDataToGraph, this, &MainWindow::slotAddWaveDataToGraph);
     connect(this, &MainWindow::signalSetCurrentPos, this, &MainWindow::slotSetCurrentPos);
+    connect(this, &MainWindow::signalSetMainWindowTitle, this, &MainWindow::slotSetMainWindowTitle);
 
 
     // Apply stylesheet.
@@ -123,6 +124,11 @@ void MainWindow::onExecCalled()
 void MainWindow::addTracksFromArgs(QStringList paths)
 {
     this->args = paths;
+}
+
+void MainWindow::setMainWindowTitle(const std::wstring sText)
+{
+    emit signalSetMainWindowTitle(QString::fromStdWString(sText));
 }
 
 void MainWindow::addTrackWidget(const std::wstring &sTrackTitle, std::promise<TrackWidget*> *pPromiseCreateWidget)
@@ -744,6 +750,11 @@ void MainWindow::slotSetCurrentPos(double x, QString sTime)
     }
 
     ui->widget_graph->replot();
+}
+
+void MainWindow::slotSetMainWindowTitle(QString sText)
+{
+    setWindowTitle(sText);
 }
 
 void MainWindow::on_pushButton_play_clicked()

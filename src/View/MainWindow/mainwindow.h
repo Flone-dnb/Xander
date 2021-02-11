@@ -41,6 +41,7 @@ signals:
     void signalSetMaxXToGraph        (unsigned int iMaxX);
     void signalAddWaveDataToGraph    (std::vector<float> vWaveData);
     void signalSetCurrentPos         (double x, QString sTime);
+    void signalSetMainWindowTitle    (QString sText);
 
     void signalSearchMatchCount      (size_t iCount);
 
@@ -52,6 +53,9 @@ public:
 
     void onExecCalled             ();
     void addTracksFromArgs        (QStringList paths);
+
+
+    void setMainWindowTitle       (const std::wstring sText);
 
 
     void addTrackWidget           (const std::wstring& sTrackTitle, std::promise<TrackWidget*>* pPromiseCreateWidget);
@@ -115,6 +119,7 @@ private slots:
     void  slotSetMaxXToGraph              (unsigned int iMaxX);
     void  slotAddWaveDataToGraph          (std::vector<float> vWaveData);
     void  slotSetCurrentPos               (double x, QString sTime);
+    void  slotSetMainWindowTitle          (QString sText);
 
     // Tray icon.
     void  slotTrayIconActivated           ();

@@ -167,6 +167,8 @@ void AudioCore::removeTrack(const std::wstring &sAudioTitle)
                 currentTrackState = CTS_DELETED;
 
                 pMainWindow->changePlayButtonStyle(false, false);
+
+                pMainWindow->setMainWindowTitle(L"Xander");
             }
 
 
@@ -356,6 +358,8 @@ void AudioCore::playTrack(const std::wstring &sTrackTitle, bool bCalledFromOther
             }
 
 
+            pMainWindow->setMainWindowTitle(vAudioTracks[i]->sAudioTitle);
+
             break;
         }
     }
@@ -383,6 +387,8 @@ void AudioCore::playTrack(bool bCalledFromOtherThread)
 
             currentTrackState = CTS_PLAYING;
         }
+
+        pMainWindow->setMainWindowTitle(vPlayedHistory.back()->sAudioTitle);
 
         mtxProcess.unlock();
     }
@@ -414,6 +420,8 @@ void AudioCore::pauseTrack()
             currentTrackState = CTS_PAUSED;
 
             pMainWindow->changePlayButtonStyle(false, false);
+
+            pMainWindow->setMainWindowTitle(L"Xander");
         }
         else if (currentTrackState == CTS_PAUSED)
         {
@@ -422,6 +430,8 @@ void AudioCore::pauseTrack()
             currentTrackState = CTS_PLAYING;
 
             pMainWindow->changePlayButtonStyle(true, false);
+
+            pMainWindow->setMainWindowTitle(vPlayedHistory.back()->sAudioTitle);
         }
     }
 }
@@ -439,6 +449,8 @@ void AudioCore::stopTrack(bool bCalledFromOtherThread)
         pMainWindow->changePlayButtonStyle(false, bCalledFromOtherThread);
 
         pMainWindow->setCurrentPos(0.0, "");
+
+        pMainWindow->setMainWindowTitle(L"Xander");
     }
 }
 
@@ -678,6 +690,9 @@ void AudioCore::clearTracklist()
 
     waitForGraphToStop();
     pMainWindow->clearGraph();
+
+
+    pMainWindow->setMainWindowTitle(L"Xander");
 }
 
 void AudioCore::setVolume(int iVolume)
