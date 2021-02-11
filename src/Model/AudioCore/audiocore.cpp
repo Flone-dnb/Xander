@@ -220,6 +220,19 @@ void AudioCore::setTrackPos(double x)
         double dResultPosInSec = dPercent * info.dSoundLengthInSec;
 
         pCurrentTrack->setPositionInSec(dResultPosInSec);
+
+
+        if (currentTrackState == CTS_PAUSED)
+        {
+            SSoundInfo info;
+            pCurrentTrack->getSoundInfo(info);
+
+
+            std::string sTime = getTimeString(dResultPosInSec);
+
+
+            pMainWindow->setCurrentPos(dResultPosInSec / info.dSoundLengthInSec, sTime);
+        }
     }
 }
 
