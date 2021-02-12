@@ -464,6 +464,8 @@ bool SSound::setPositionInSec(double dPositionInSec)
                 return true;
             }
 
+            SetEvent(voiceCallback.hBufferEndEvent);
+
             hr = pSourceVoice->Start();
             if (FAILED(hr))
             {
