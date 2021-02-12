@@ -13,6 +13,9 @@
 // Custom
 #include "AudioEngine/SSoundMix/ssoundmix.h"
 
+// Other
+#include <Mferror.h>
+
 
 SSound::SSound(SAudioEngine* pAudioEngine)
 {
@@ -439,6 +442,8 @@ bool SSound::setPositionInSec(double dPositionInSec)
         if (SUCCEEDED(hr))
         {
             //dCurrentStreamingPosInSec = dPositionInSec;
+
+            std::lock_guard<std::mutex> lock(mtxStreamingReadSampleSubmit);
 
             hr = pAsyncSourceReader->Flush((DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM);
             if (FAILED(hr))
@@ -1247,14 +1252,26 @@ bool SSound::loopStream(IMFSourceReader *pAsyncReader, IXAudio2SourceVoice *pSou
         }
 
 
+        mtxStreamingReadSampleSubmit.lock();
+
         hr = pAsyncReader->ReadSample(streamIndex, 0, nullptr, nullptr, nullptr, nullptr);
         if (FAILED(hr))
         {
+            mtxStreamingReadSampleSubmit.unlock();
+
+            if (hr == MF_E_NOTACCEPTING)
+            {
+                continue;
+            }
+
             pAudioEngine->showError(hr, L"AudioEngine::loopStream::ReadSample()");
             return true;
         }
 
         WaitForSingleObject(sourceReaderCallback.hReadSampleEvent, INFINITE);
+
+        mtxStreamingReadSampleSubmit.unlock();
+
 
         dCurrentStreamingPosInSec = sourceReaderCallback.llTimestamp / 10000000;
 
@@ -1358,7 +1375,10 @@ bool SSound::loopStream(IMFSourceReader *pAsyncReader, IXAudio2SourceVoice *pSou
         XAUDIO2_BUFFER buf = { 0 };
         buf.AudioBytes = iSampleBufferSize;
         buf.pAudioData = vBuffers[iCurrentStreamBufferIndex].get();
+
+        mtxStreamingReadSampleSubmit.lock();
         pSourceVoice->SubmitSourceBuffer(&buf);
+        mtxStreamingReadSampleSubmit.unlock();
 
 
 

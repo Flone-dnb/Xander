@@ -148,6 +148,7 @@ private:
     std::mutex     mtxStreamingSwitch;
     std::mutex     mtxSoundState;
     std::mutex     mtxOptionalSourceReaderRead;
+    std::mutex     mtxStreamingReadSampleSubmit;
 
 
     std::wstring   sAudioFileDiskPath;
