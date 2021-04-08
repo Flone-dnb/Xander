@@ -1187,6 +1187,7 @@ bool SSound::streamAudioFile(IMFSourceReader *pAsyncReader)
 
     if (bStopStreaming)
     {
+        mtxStreamingSwitch.unlock();
         return false;
     }
 
